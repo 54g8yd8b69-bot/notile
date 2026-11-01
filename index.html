@@ -399,7 +399,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
       <button type="button" class="btn sm ghost2" id="pdel">Delete</button></div>
     <div class="tgroup"><input type="text" id="pname" placeholder="Name this set-up, e.g. LR6 composite" aria-label="Preset name">
       <button type="button" class="btn sm" id="psave">Save as preset</button></div>
-    <a class="btn sm ghost2 setlink" id="setlink" href="https://54g8yd8b69-bot.github.io/set-app/" target="_blank" rel="noopener">Nurse set-up ↗</a>
+    <a class="btn sm ghost2 setlink" id="setlink" href="/set-app/" target="_blank" rel="noopener">Nurse set-up ↗</a>
     <button type="button" class="btn sm ghost2" id="chopen">Dental chart</button>
     <button type="button" class="btn sm ghost2" id="utEdit" hidden>Edit my template</button>
     <button type="button" class="btn sm ghost2" id="edopen">Adjust template</button>
@@ -2018,7 +2018,7 @@ $('chCopyImg').addEventListener('click',()=>{const c=PTS[AP].chart;if(!c||!c.svg
   catch(err){toast('This browser blocked image copying here')}});
 
 // ---------- link to Dental Set-App, opened on the matching procedure ----------
-const SETAPP='https://54g8yd8b69-bot.github.io/set-app/';
+const SETAPP='/set-app/';
 const procSlug=n=>String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 function setAppProc(s){switch(cur.id){
   case 'direct':case 'build':return 'Direct composite restoration';
