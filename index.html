@@ -1065,7 +1065,7 @@ const LT={g:'Letters',id:'gdpobt',name:'Letter to GDP: obturation',sections:[
 function buildLetter(s){
   const e=endoS(),d=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   const tooth=(s.tooth||[]).length?toothTxt(s.tooth):(e.tooth||[]).length?toothTxt(e.tooth):'[tooth]';
-  const L=[d,'',`Dear ${(s.gdp||'').trim()||'Colleague'},`,'','Re: [patient name, date of birth, CHI]',''];
+  const L=[d,'',`Dear ${(s.gdp||'').trim()||'Colleague'},`,''];
   const what=(s.outc||'Root canal treatment completed').replace(/ completed$/,'').toLowerCase();
   L.push(`Thank you for referring this patient to ${(s.dept||'').trim()||'our department'}. I am writing to let you know that ${what} of ${tooth} has been completed${s.visits?` over ${s.visits==='1'?'one visit':s.visits+' visits'}`:''}.`,'');
   const sum=[];const add=(k,v)=>{if(v)sum.push(`– ${k}: ${v}`)};
