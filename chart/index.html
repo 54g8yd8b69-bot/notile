@@ -206,8 +206,6 @@ textarea.field{width:100%;min-height:118px;resize:vertical;margin-top:10px;line-
   <section class="work">
     <div class="card chart-card">
       <div class="chart-head">
-        <label for="pLabel">Patient</label>
-        <input id="pLabel" class="field" autocomplete="off" placeholder="Initials or clinic ref">
         <span class="pill" id="examplePill" hidden>Example data</span>
         <div class="seg small" role="group" aria-label="Dentition">
           <button id="dPerm" aria-pressed="true">Permanent</button>
@@ -247,7 +245,7 @@ textarea.field{width:100%;min-height:118px;resize:vertical;margin-top:10px;line-
       <div id="imgOut" hidden><p id="imgHint"></p><img id="imgPrev" alt="Exported dental chart"></div>
     </div>
     <div class="card pad pcard" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-      <p class="privacy">Charts stay in this browser only. Use initials or a clinic reference, not full patient identifiers. Notile Chart is a recording aid, not a diagnostic tool: check the chart and note before they go into the record; you remain responsible for their accuracy.</p>
+      <p class="privacy">Charts stay in this browser only. Patients are numbered automatically: never record names, CHI or hospital numbers. Notile Chart is a recording aid, not a diagnostic tool: check the chart and note before they go into the record; you remain responsible for their accuracy.</p>
       <button class="btn danger" id="delPatient">Delete this patient</button>
     </div>
   </section>
@@ -490,7 +488,7 @@ function sample(){
   if(p.perio.t.UR6){p.perio.t.UR6.fur.b='2';p.perio.t.UR6.sup.db=true}if(p.perio.t.LR6)p.perio.t.LR6.fur.b='1';if(p.perio.t.LL1)p.perio.t.LL1.mob='I';if(p.perio.t.LR3)p.perio.t.LR3.gm.b=3}
  return p;
 }
-function load(){try{const o=JSON.parse(localStorage.getItem(LS)||'null');if(o&&Array.isArray(o.patients)&&o.patients.length){o.patients=o.patients.map(p=>p.example&&p.sv!==8?sample():p);o.cur=Math.min(o.cur||0,o.patients.length-1);return o}}catch(e){}return null}
+function load(){try{const o=JSON.parse(localStorage.getItem(LS)||'null');if(o&&Array.isArray(o.patients)&&o.patients.length){o.patients=o.patients.map(p=>p.example&&p.sv!==8?sample():p).map((p,i)=>(p.label=p.example?'Example patient':'Patient '+(i+1),p));o.cur=Math.min(o.cur||0,o.patients.length-1);return o}}catch(e){}return null}
 let store=EMBED?{cur:0,patients:[blank('')]}:(load()||{cur:0,patients:[sample()]});
 let mode='ex',tool='amalgam',history=[];
 const P_=()=>store.patients[store.cur];
@@ -807,7 +805,6 @@ function renderBPE(){
 }
 function renderMeta(){
  const p=P_();
- $('pLabel').value=p.label||'';
  $('examplePill').hidden=!p.example;
  $('dPerm').setAttribute('aria-pressed',p.dent==='perm');
  $('dPrim').setAttribute('aria-pressed',p.dent==='prim');
@@ -889,10 +886,9 @@ function setDent(d){const p=P_();if(p.dent===d)return;snapshot();p.dent=d;
  save();renderMeta();renderTools();setStatus();renderChart();renderNote()}
 $('dPerm').onclick=()=>setDent('perm');$('dPrim').onclick=()=>setDent('prim');$('dMix').onclick=()=>setDent('mixed');
 $('patients').addEventListener('click',e=>{
- if(e.target.closest('#addP')){store.patients.push(blank('Patient '+(store.patients.length+1)));store.cur=store.patients.length-1;history=[];save();renderAll();$('pLabel').focus();$('pLabel').select();return}
+ if(e.target.closest('#addP')){store.patients.push(blank('Patient '+(store.patients.length+1)));store.cur=store.patients.length-1;history=[];save();renderAll();return}
  const c=e.target.closest('[data-i]');if(!c)return;store.cur=+c.dataset.i;history=[];save();renderAll();
 });
-$('pLabel').addEventListener('input',e=>{const p=P_();p.label=e.target.value;if(p.example)p.example=false;save();renderPatients();$('examplePill').hidden=true});
 $('extra').addEventListener('input',e=>{P_().notes=e.target.value;save();renderNote()});
 $('bpe').addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;const p=P_();(p.bpe??={})[k]=e.target.value;save();renderNote()});
 function undo(){if(!history.length)return;store.patients[store.cur]=JSON.parse(history.pop());save();renderMeta();renderBPE();renderChart();renderNote();if(view==='perio')renderPerio()}
