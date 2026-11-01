@@ -46,6 +46,21 @@ h1 span{color:var(--teal2)}
 .tab{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;font-weight:700;padding:8px 13px;border-radius:8px;cursor:pointer}
 .tab[aria-selected="true"]{background:var(--tab-on);color:var(--tab-on-fg);border-color:var(--tab-on)}
 .tab{white-space:nowrap}
+.tab.addt{border-style:dashed;color:var(--teal);font-weight:600;background:transparent}
+dialog.utdlg{width:min(860px,calc(100vw - 16px))}
+.utsecs{display:flex;flex-direction:column;gap:12px;margin:12px 0}
+.utsec{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.uthead{display:flex;gap:6px;align-items:center}
+.uthead input{flex:1;min-width:0;font-weight:600}
+.utrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:6px;align-items:start;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.utrow textarea,.utrow .utunit{grid-column:1/-1}
+.utrow textarea{min-height:64px;font-size:.9rem}
+.utrow .utblk{padding:10px 2px;font-size:.92rem;color:var(--muted)}
+.utbtns{display:flex;gap:4px}
+.utbtns .btn{min-height:38px;padding:6px 10px}
+.utadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.utadd select{width:auto;max-width:100%}
+@media (max-width:560px){.utrow{grid-template-columns:minmax(0,1fr)}.utbtns{justify-content:flex-end}}
 .glbl{display:none}
 @media (max-width:640px){
   .tabs{flex-direction:column;flex-wrap:nowrap;gap:10px}
@@ -377,6 +392,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
       <button type="button" class="btn sm" id="psave">Save as preset</button></div>
     <a class="btn sm ghost2 setlink" id="setlink" href="https://54g8yd8b69-bot.github.io/set-app/" target="_blank" rel="noopener">Nurse set-up ↗</a>
     <button type="button" class="btn sm ghost2" id="chopen">Dental chart</button>
+    <button type="button" class="btn sm ghost2" id="utEdit" hidden>Edit my template</button>
     <button type="button" class="btn sm ghost2" id="edopen">Adjust template</button>
   </div>
   <div class="grid">
@@ -423,6 +439,15 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
   </details>
   <p class="sub" id="edMsg" role="status"></p>
   <div class="dlgbtns"><button class="btn ghost2" type="button" id="edCancel">Close</button><button class="btn primary" type="button" id="edSave">Save changes</button></div>
+</dialog>
+<dialog id="utDlg" class="utdlg" aria-labelledby="utTitle">
+  <h2 id="utTitle">New template</h2>
+  <p class="sub">Build your own template from sections and fields. It's saved on this device and included in Backup (Adjust template → Backup and reset).</p>
+  <div class="field" style="margin-top:10px"><label class="lbl" for="utName">Template name</label><input type="text" id="utName" placeholder="e.g. Splint review" maxlength="60"></div>
+  <div class="utsecs" id="utSecs"></div>
+  <div class="utadd"><button type="button" class="addpt" id="utAddSec">+ Add section</button></div>
+  <p class="sub" id="utMsg" role="status"></p>
+  <div class="dlgbtns"><button class="btn ghost2" type="button" id="utDel" hidden>Delete template</button><button class="btn ghost2" type="button" id="utCancel">Cancel</button><button class="btn primary" type="button" id="utSave">Save template</button></div>
 </dialog>
 <dialog id="pickDlg" aria-labelledby="pickTitle">
   <h2 id="pickTitle"></h2>
@@ -1407,6 +1432,25 @@ T.forEach(t=>{if(t.letter)return;
   t.sections.push({t:PLAN.t,f:PLAN.f});
 });
 
+// ---------- your own templates: built from sections and fields, saved on this device ----------
+const UTKEY='notileUserTemplates_v1';let UT=[];
+const UT_TYPES=[['text','Short text'],['long','Long text'],['single','Chips, pick one'],['multi','Chips, pick any'],['num','Number'],['teeth','Tooth chart']];
+const UT_BLOCKS=[['mh','Ready-made: Medical history'],['consent','Ready-made: Consent'],['la','Ready-made: Local anaesthetic'],['iso','Ready-made: Isolation'],['rad','Ready-made: Radiographs'],['bpe','Ready-made: BPE']];
+const utClean=(x,n=80)=>String(x??'').replace(/[<>]/g,'').trim().slice(0,n);
+const utId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function utSanitize(list){return (Array.isArray(list)?list:[]).filter(u=>u&&typeof u==='object').slice(0,40).map(u=>({id:/^ut_[a-z0-9]+$/.test(u.id)?u.id:utId('ut_'),name:utClean(u.name,60)||'My template',
+  sections:(Array.isArray(u.sections)?u.sections:[]).slice(0,20).map(sec=>({t:utClean(sec.t,60)||'Notes',f:(Array.isArray(sec.f)?sec.f:[]).slice(0,40).filter(x=>x&&(UT_TYPES.some(t=>t[0]===x.type)||UT_BLOCKS.some(b=>b[0]===x.type))).map(x=>({id:/^uf[a-z0-9]+$/.test(x.id)?x.id:utId('uf'),type:x.type,label:utClean(x.label),opts:(Array.isArray(x.opts)?x.opts:[]).map(o=>utClean(o)).filter(Boolean).slice(0,40),unit:utClean(x.unit,12)}))}))}))}
+function utFields(x){const L=x.label||'Notes';switch(x.type){
+  case 'text':return [X(x.id,L)];case 'long':return [X(x.id,L,{area:true})];
+  case 'single':return [S(x.id,L,x.opts)];case 'multi':return [M(x.id,L,x.opts)];
+  case 'num':return [N(x.id,L,{unit:x.unit?` ${x.unit}`:''})];case 'teeth':return [TH(x.id,L)];
+  case 'mh':return MH;case 'consent':return [CONSENT];case 'la':return LA();case 'iso':return ISO();case 'rad':return RAD;case 'bpe':return [B('bpe','BPE')];default:return []}}
+function utCopy(f){const c={...f};if(c.options)c._o=[...c.options];if(c.items)c._i=c.items.map(x=>({...x}));return c}
+function utBuild(u){const seen=new Set();return {g:'My templates',id:u.id,name:u.name,user:true,sections:u.sections.map(sec=>({t:sec.t,f:sec.f.flatMap(x=>{if(UT_BLOCKS.some(b=>b[0]===x.type)){if(seen.has(x.type))return [];seen.add(x.type)}return utFields(x)}).map(utCopy)})).filter(sec=>sec.f.length)}}
+try{UT=utSanitize(JSON.parse(localStorage.getItem(UTKEY)||'[]'))}catch(e){UT=[]}
+function saveUT(){try{localStorage.setItem(UTKEY,JSON.stringify(UT))}catch(e){}}
+UT.forEach(u=>{const t=utBuild(u);if(t.sections.length)T.push(t)});
+
 // ---------- template editor: each template gets its own copy of every field, then saved edits apply ----------
 T.forEach(t=>t.sections.forEach(sec=>{sec.f=sec.f.map(f=>{const c={...f};if(c.options)c._o=[...c.options];if(c.items)c._i=c.items.map(x=>({...x}));return c})}));
 const CKEY='notileCustom_v1';let CUSTOM={};
@@ -1474,7 +1518,9 @@ const esc=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 // ---------- render ----------
 function renderTabs(){
   const groups=[...new Set(T.map(t=>t.g))];
-  $('tabs').innerHTML=groups.map(g=>`<div class="tgrp"><span class="glbl">${g}</span>${T.filter(t=>t.g===g).map(t=>`<button class="tab" role="tab" type="button" id="tab-${t.id}" aria-selected="${t===cur}" data-t="${t.id}">${t.name}</button>`).join('')}</div>`).join('');
+  if(!groups.includes('My templates'))groups.push('My templates');
+  $('tabs').innerHTML=groups.map(g=>`<div class="tgrp"><span class="glbl">${g}</span>${T.filter(t=>t.g===g).map(t=>`<button class="tab" role="tab" type="button" id="tab-${t.id}" aria-selected="${t===cur}" data-t="${t.id}">${t.user?esc(t.name):t.name}</button>`).join('')}${g==='My templates'?'<button class="tab addt" type="button" id="utNew">+ New template</button>':''}</div>`).join('');
+  const ue=document.getElementById('utEdit');if(ue)ue.hidden=!cur.user;
 }
 function renderForm(){
   const s=state[cur.id];
@@ -1892,10 +1938,10 @@ $('edResetF').addEventListener('click',()=>{if(!edFid)return;if(CUSTOM[cur.id])d
 let edAllArmed=false;
 $('edResetAll').addEventListener('click',e=>{const b=e.currentTarget;if(!edAllArmed){edAllArmed=true;b.textContent='Tap again to reset everything';setTimeout(()=>{edAllArmed=false;b.textContent='Reset all templates'},3000);return}
   edAllArmed=false;b.textContent='Reset all templates';CUSTOM={};edPending={};saveCustom();applyCustom();renderForm();edRender();$('edMsg').textContent='All templates are back to their original options.'});
-$('edCopy').addEventListener('click',()=>{const txt=JSON.stringify({notile:1,custom:CUSTOM,presets:PRESETS});
+$('edCopy').addEventListener('click',()=>{const txt=JSON.stringify({notile:1,custom:CUSTOM,presets:PRESETS,ut:UT});
   const fb=()=>{const r=$('edRestore');r.value=txt;r.focus();r.select();$('edMsg').textContent='Backup selected in the box. Copy it with your device.'};
   try{navigator.clipboard.writeText(txt).then(()=>{$('edMsg').textContent='Backup copied. Paste it into a note or email to keep it.'},fb)}catch(err){fb()}});
-$('edLoad').addEventListener('click',()=>{try{const d=JSON.parse($('edRestore').value);if(!d||d.notile!==1)throw 0;CUSTOM=d.custom||{};PRESETS=d.presets||{};saveCustom();savePresets();applyCustom();renderForm();edPending={};edRender();$('edMsg').textContent='Backup restored.'}
+$('edLoad').addEventListener('click',()=>{try{const d=JSON.parse($('edRestore').value);if(!d||d.notile!==1)throw 0;if(Array.isArray(d.ut))utReplaceAll(utSanitize(d.ut));CUSTOM=d.custom||{};PRESETS=d.presets||{};saveCustom();savePresets();applyCustom();renderForm();edPending={};edRender();$('edMsg').textContent='Backup restored.'}
   catch(err){$('edMsg').textContent='That doesn’t look like a Notile backup. Paste the whole backup text and try again.'}});
 
 // ---------- Chrome Card: denture design drawn in an embedded designer, saved per patient ----------
@@ -2002,6 +2048,58 @@ $('seccopy').addEventListener('click',()=>{const hd=$('secsel').value;if(!hd){to
   const fb=()=>{const o=$('out'),i=o.value.indexOf(sec.body);o.focus();if(i>=0)o.setSelectionRange(i,i+sec.body.length);toast('Selected – copy with your device')};
   try{navigator.clipboard.writeText(sec.body).then(()=>toast(`${hd.charAt(0)+hd.slice(1).toLowerCase()} copied`),fb)}catch(e){fb()}});
 $('out').addEventListener('input',fillSecs);
+
+// ---------- your own templates: editor ----------
+let utWork=null;
+const utBlank=()=>({id:utId('ut_'),name:'',sections:[{t:'Assessment',f:[{id:utId('uf'),type:'teeth',label:'Tooth',opts:[],unit:''},{id:utId('uf'),type:'single',label:'Findings',opts:['No change','Improved','Worse'],unit:''},{id:utId('uf'),type:'long',label:'Notes',opts:[],unit:''}]},{t:'Plan',f:[{id:utId('uf'),type:'long',label:'Plan',opts:[],unit:''}]}]});
+function utOpen(id){const u=id&&UT.find(x=>x.id===id);utWork=JSON.parse(JSON.stringify(u||utBlank()));
+  $('utTitle').textContent=u?`Edit template: ${u.name}`:'New template';$('utName').value=utWork.name;$('utDel').hidden=!u;$('utMsg').textContent='';utRender();
+  try{$('utDlg').showModal()}catch(e){$('utDlg').setAttribute('open','')}if(!u)$('utName').focus()}
+function utClose(){$('utDlg').close?.();$('utDlg').removeAttribute('open')}
+function utRender(){const isBlk=t=>UT_BLOCKS.some(b=>b[0]===t),opt=(v,l,c)=>`<option value="${v}"${v===c?' selected':''}>${esc(l)}</option>`;
+  $('utSecs').innerHTML=utWork.sections.map((sec,si)=>`<div class="utsec"><div class="uthead"><input type="text" data-us="${si}" data-uk="t" value="${esc(sec.t)}" aria-label="Section ${si+1} heading" placeholder="Section heading"><div class="utbtns"><button type="button" class="btn sm ghost2" data-umv="s:${si}:-1" aria-label="Move section up"${si===0?' disabled':''}>↑</button><button type="button" class="btn sm ghost2" data-umv="s:${si}:1" aria-label="Move section down"${si===utWork.sections.length-1?' disabled':''}>↓</button><button type="button" class="btn sm ghost2" data-urm="s:${si}" aria-label="Remove section">✕</button></div></div>
+    ${sec.f.map((x,fi)=>{const blk=isBlk(x.type),pick=x.type==='single'||x.type==='multi';return `<div class="utrow">${blk?`<span class="utblk">${esc(UT_BLOCKS.find(b=>b[0]===x.type)[1].replace('Ready-made: ',''))} (ready-made)</span>`:`<input type="text" data-us="${si}" data-uf="${fi}" data-uk="label" value="${esc(x.label)}" placeholder="Field name, e.g. Splint fit" aria-label="Field name">`}
+      <select data-us="${si}" data-uf="${fi}" data-uk="type" aria-label="Field type"><optgroup label="Your field">${UT_TYPES.map(t=>opt(t[0],t[1],x.type)).join('')}</optgroup><optgroup label="Ready-made sets">${UT_BLOCKS.map(t=>opt(t[0],t[1].replace('Ready-made: ',''),x.type)).join('')}</optgroup></select>
+      <div class="utbtns"><button type="button" class="btn sm ghost2" data-umv="f:${si}:${fi}:-1" aria-label="Move field up"${fi===0?' disabled':''}>↑</button><button type="button" class="btn sm ghost2" data-umv="f:${si}:${fi}:1" aria-label="Move field down"${fi===sec.f.length-1?' disabled':''}>↓</button><button type="button" class="btn sm ghost2" data-urm="f:${si}:${fi}" aria-label="Remove field">✕</button></div>
+      ${pick?`<textarea data-us="${si}" data-uf="${fi}" data-uk="opts" rows="3" placeholder="Chip options, one per line" aria-label="Chip options">${esc(x.opts.join('\n'))}</textarea>`:''}
+      ${x.type==='num'?`<input type="text" class="utunit" data-us="${si}" data-uf="${fi}" data-uk="unit" value="${esc(x.unit)}" placeholder="Unit, e.g. mm or Ncm (optional)" aria-label="Unit">`:''}</div>`}).join('')}
+    <div class="utadd"><button type="button" class="btn sm ghost2" data-uaddf="${si}">+ Add field</button></div></div>`).join('')||'<p class="sub">No sections yet. Add one below.</p>'}
+$('utDlg').addEventListener('input',e=>{const el=e.target;if(el.id==='utName'){utWork.name=el.value;return}if(el.dataset.us===undefined)return;const sec=utWork.sections[+el.dataset.us];
+  if(el.dataset.uf===undefined){sec.t=el.value;return}const x=sec.f[+el.dataset.uf],k=el.dataset.uk;
+  if(k==='opts')x.opts=el.value.split('\n');else if(k!=='type')x[k]=el.value});
+$('utDlg').addEventListener('change',e=>{const el=e.target;if(el.dataset.uk!=='type')return;const x=utWork.sections[+el.dataset.us].f[+el.dataset.uf];x.type=el.value;
+  if((x.type==='single'||x.type==='multi')&&!x.opts.filter(o=>o.trim()).length)x.opts=['Yes','No'];utRender()});
+$('utDlg').addEventListener('click',e=>{const mv=e.target.closest('[data-umv]'),rm=e.target.closest('[data-urm]'),af=e.target.closest('[data-uaddf]');
+  if(mv){const a=mv.dataset.umv.split(':');if(a[0]==='s'){const i=+a[1],j=i+(+a[2]),l=utWork.sections;[l[i],l[j]]=[l[j],l[i]]}else{const l=utWork.sections[+a[1]].f,i=+a[2],j=i+(+a[3]);[l[i],l[j]]=[l[j],l[i]]}utRender();return}
+  if(rm){const a=rm.dataset.urm.split(':');if(a[0]==='s')utWork.sections.splice(+a[1],1);else utWork.sections[+a[1]].f.splice(+a[2],1);utRender();return}
+  if(af){const sec=utWork.sections[+af.dataset.uaddf];sec.f.push({id:utId('uf'),type:'text',label:'',opts:[],unit:''});utRender();const ins=$('utSecs').querySelectorAll(`[data-us="${af.dataset.uaddf}"][data-uk="label"]`);if(ins.length)ins[ins.length-1].focus()}});
+$('utAddSec').addEventListener('click',()=>{utWork.sections.push({t:'',f:[{id:utId('uf'),type:'text',label:'',opts:[],unit:''}]});utRender();const ins=$('utSecs').querySelectorAll('.uthead input');if(ins.length)ins[ins.length-1].focus()});
+$('utCancel').addEventListener('click',utClose);
+function utInstall(u){const t=utBuild(u),i=T.findIndex(x=>x.id===u.id);if(i>=0)T[i]=t;else T.push(t);applyCustom();
+  PTS.forEach(p=>{const old=p.state[u.id]||{},s=defaults(t),ids=new Set(allF(t).map(f=>f.id));Object.keys(old).forEach(k=>{if(ids.has(k)||k==='__ed')s[k]=old[k]});p.state[u.id]=s});
+  if(cur.id===u.id)cur=t;return t}
+function utReplaceAll(list){for(let i=T.length-1;i>=0;i--)if(T[i].user)T.splice(i,1);UT=list;saveUT();UT.forEach(u=>{const t=utBuild(u);if(t.sections.length)utInstall(u)});
+  if(!T.includes(cur)){cur=T.find(t=>t.id==='exam')||T[0];PTS[AP].cur=cur.id}renderTabs()}
+$('utSave').addEventListener('click',()=>{const w=utWork;w.name=utClean(w.name,60);
+  if(!w.name){$('utMsg').textContent='Give the template a name first.';$('utName').focus();return}
+  if(T.some(t=>t.id!==w.id&&t.name.toLowerCase()===w.name.toLowerCase())){$('utMsg').textContent=`There's already a template called "${w.name}". Pick a different name.`;return}
+  const clean=utSanitize([w])[0];clean.id=w.id;
+  clean.sections.forEach((sec,si)=>sec.f.forEach((x,fi)=>{if(!x.label&&!UT_BLOCKS.some(b=>b[0]===x.type))x.label=`Field ${fi+1}`}));
+  const bad=clean.sections.flatMap(sec=>sec.f).find(x=>(x.type==='single'||x.type==='multi')&&!x.opts.length);
+  if(bad){$('utMsg').textContent=`"${bad.label}" needs at least one chip option, one per line.`;return}
+  if(!clean.sections.some(sec=>sec.f.length)){$('utMsg').textContent='Add at least one field.';return}
+  const isNew=!UT.some(u=>u.id===clean.id);if(isNew)UT.push(clean);else UT[UT.findIndex(u=>u.id===clean.id)]=clean;saveUT();
+  const t=utInstall(clean);if(isNew){cur=t;PTS[AP].cur=t.id}
+  utClose();markEdited();renderPBar();renderTabs();renderForm();saveDraft();toast(isNew?`"${clean.name}" added to My templates`:`"${clean.name}" updated`)});
+let utDelArmed=false;
+$('utDel').addEventListener('click',e=>{const b=e.currentTarget;if(!utDelArmed){utDelArmed=true;b.textContent='Tap again to delete';setTimeout(()=>{utDelArmed=false;b.textContent='Delete template'},3000);return}
+  utDelArmed=false;b.textContent='Delete template';const id=utWork.id,name=(UT.find(u=>u.id===id)||{}).name||'Template';
+  UT=UT.filter(u=>u.id!==id);saveUT();const i=T.findIndex(t=>t.id===id);if(i>=0)T.splice(i,1);
+  if(CUSTOM[id]){delete CUSTOM[id];saveCustom()}if(PRESETS[id]){delete PRESETS[id];savePresets()}
+  PTS.forEach(p=>{delete p.state[id];if(p.cur===id)p.cur='exam'});if(cur.id===id)cur=T.find(t=>t.id==='exam')||T[0];
+  utClose();renderPBar();renderTabs();renderForm();saveDraft();toast(`"${name}" deleted`)});
+$('tabs').addEventListener('click',e=>{if(e.target.closest('#utNew'))utOpen()});
+$('utEdit').addEventListener('click',()=>{if(cur.user)utOpen(cur.id)});
 
 if(loadDrafts())setTimeout(()=>toast(PTS.length>1?`${PTS.length} patients restored`:'Draft restored'),300);else{PTS=[newPatient()];usePatient(0)}
 renderPBar();

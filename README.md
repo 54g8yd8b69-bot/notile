@@ -4,6 +4,8 @@ Click-through clinical note templates for UK dental hospital use. Tap through a 
 
 Open the app: https://54g8yd8b69-bot.github.io/notile/
 
+Build your own templates with **+ New template**: add sections and fields (short or long text, pick-one or pick-any chips, numbers, tooth chart) or ready-made sets (medical history, consent, local anaesthetic, isolation, radiographs, BPE). Your templates are saved on your device and included in Backup.
+
 ## Notile Chart
 
 Palmer dental charting and six-point pocket charting (6PPC). Charts existing and planned work, caries depth, root caries, fixed and removable prosthodontics, mixed dentition and retained primary teeth, then builds a copy-paste note and a chart image.
