@@ -303,6 +303,15 @@ h2,section.card h2,dialog h2,.infobox .ih,.ititle,.note-head strong{font-family:
 section.card h2{font-size:1.15rem}
 section.card,.clin,.clinicbar,.pbar,.note,dialog{border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
 section.card{padding:20px}
+section.card{position:relative}
+section.card>h2{padding-right:44px}
+.secx{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-size:1.05rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.secx:hover{border-color:var(--red,#C2303A);color:var(--red,#C2303A)}
+section.card.off{background:transparent;border-style:dashed;box-shadow:none}
+section.card.off>:not(h2):not(.secx){opacity:.4}
+section.card.off>h2{color:var(--muted)}
+section.card.off .secx{width:auto;border-radius:999px;padding:0 12px;font-size:.82rem;font-weight:600;color:var(--teal);border-color:var(--teal)}
+.offtag{display:inline-block;margin-left:8px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);vertical-align:middle}
 .lbl{font-size:.85rem;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
 .lbl small{font-size:.85em}
 .chips{gap:6px}
@@ -1524,7 +1533,8 @@ function renderTabs(){
 }
 function renderForm(){
   const s=state[cur.id];
-  $('form').innerHTML=cur.sections.map((sec,i)=>`<section class="card" data-sec="${i}" style="--i:${i}"><h2>${sec.t}</h2>${sec.f.map(f=>fieldHTML(f,s)).join('')}</section>`).join('');
+  const off=Array.isArray(s.__off)?s.__off:[];
+  $('form').innerHTML=cur.sections.map((sec,i)=>{const o=off.includes(sec.t);return `<section class="card${o?' off':''}" data-sec="${i}" style="--i:${i}"><h2>${cur.user?esc(sec.t):sec.t}${o?'<span class="offtag">Left out of note</span>':''}</h2><button type="button" class="secx" data-secx="${i}" aria-pressed="${o}" aria-label="${o?'Add':'Leave'} ${esc(sec.t)} ${o?'back into':'out of'} the note" title="${o?'Add this section back into the note':'Leave this section out of the note'}">${o?'Add back':'✕'}</button>${sec.f.map(f=>fieldHTML(f,s)).join('')}</section>`}).join('');
   sync();
 }
 function fieldHTML(f,s){
@@ -1639,7 +1649,7 @@ function build(){
   out.push('');
   cur.sections.forEach(sec=>{
     const lines=sec.f.filter(f=>(!f.when||f.when(s))&&(!f.noNote||other(f,s))).map(f=>{const v=f.type==='info'?f.note(s):f.noNote?other(f,s):val(f,s);return v?(f.sentence?`${f.nl||f.label} ${v}`:(f.list||['disc','wl','ff','implants','bridges','tfind','tmap','obtq','cbr','cc'].includes(f.type))?`${f.label}:\n${v}`:`${f.label}: ${v}`):''}).filter(Boolean);
-    if(lines.length){out.push(sec.t.toUpperCase(),...lines,'')}
+    if(lines.length&&!(Array.isArray(s.__off)&&s.__off.includes(sec.t))){out.push(sec.t.toUpperCase(),...lines,'')}
   });
   const chl=chartNoteLines();if(chl.length)out.push('DENTAL CHARTING',...chl,'');
   const sig=[CL.name,CL.grade].filter(Boolean).join(', ')+(CL.gdc?` (GDC ${CL.gdc})`:'');
@@ -1771,7 +1781,12 @@ $('toothDone').addEventListener('click',()=>{
 
 // ---------- events ----------
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;cur=T.find(t=>t.id===b.dataset.t);PTS[AP].cur=cur.id;renderPBar();renderTabs();renderForm();window.scrollTo({top:0})});
-$('form').addEventListener('click',e=>{
+$('form').addEventListener('click',e=>{const sx=e.target.closest('[data-secx]');if(sx){e.stopPropagation();const s=state[cur.id],sec=cur.sections[+sx.dataset.secx];if(!sec)return;
+  const off=Array.isArray(s.__off)?s.__off.filter(t=>t!==sec.t):[];const was=Array.isArray(s.__off)&&s.__off.includes(sec.t);if(!was)off.push(sec.t);
+  if(off.length)s.__off=off;else delete s.__off;
+  const card=sx.closest('section.card');card.classList.toggle('off',!was);const h=card.querySelector('h2');const tg=h.querySelector('.offtag');if(!was&&!tg)h.insertAdjacentHTML('beforeend','<span class="offtag">Left out of note</span>');if(was&&tg)tg.remove();
+  sx.setAttribute('aria-pressed',!was);sx.textContent=was?'✕':'Add back';sx.title=was?'Leave this section out of the note':'Add this section back into the note';sx.setAttribute('aria-label',`${was?'Leave':'Add'} ${sec.t} ${was?'out of':'back into'} the note`);
+  markEdited();sync();saveDraft();toast(was?`${sec.t} added back`:`${sec.t} left out of the note`);return}
   if(e.target.closest('.chip,[data-addsug]'))markEdited();
   const tb=e.target.closest('[data-tf]');if(tb){openTeeth(tb.dataset.tf);return}
   const ab=e.target.closest('[data-addsug]');if(ab){const s=state[cur.id],f=allF(cur).find(x=>x.id===ab.dataset.addsug),a=s[f.id]||[];
