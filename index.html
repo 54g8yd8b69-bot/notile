@@ -1427,7 +1427,7 @@ function applyCustom(){applyLayout();T.forEach(t=>t.sections.forEach(sec=>sec.f.
 applyCustom();
 
 // ---------- clinician & clinic (shared by every template; remembered on this device) ----------
-const CL={name:'Callum Edward',grade:'DCT3',gdc:'309734',sup:'',supo:'',clinic:'',seen:''};
+const CL={name:'',grade:'',gdc:'',sup:'',supo:'',clinic:'',seen:''};
 const supName=()=>(CL.supo||'').trim()||(CL.sup==='Other'?'':CL.sup);
 const CLKEY='chairsideClinician_v1';
 try{const st=JSON.parse(localStorage.getItem(CLKEY)||'{}');Object.keys(st).forEach(k=>{if(st[k])CL[k]=st[k]});CL.clinic='';CL.seen=''}catch(e){}
