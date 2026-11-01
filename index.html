@@ -357,7 +357,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
 
     </div>
   </details>
-  <div class="clinicbar"><div class="field cbar"><label class="lbl" for="cl-clinic">Clinic</label><select id="cl-clinic" data-cl="clinic"></select></div><div class="field cbar"><label class="lbl" for="cl-sup">Supervisor</label><div class="sctl"><select id="cl-sup" data-cl="sup"><option value=""></option><option>Dr A Asuni</option><option>Dr A Patterson</option><option>Dr G Calvert</option><option>Dr S Dolan</option><option>Dr B Burns</option></select><input type="text" class="oth" id="cl-supo" data-cl="supo" placeholder="Other, not listed" aria-label="Supervisor not listed"></div></div></div>
+  <div class="clinicbar"><div class="field cbar"><label class="lbl" for="cl-clinic">Clinic</label><input type="text" id="cl-clinic" data-cl="clinic" list="cl-clinic-list" autocomplete="off" placeholder="Type your clinic, e.g. Restorative new patients"><datalist id="cl-clinic-list"></datalist></div><div class="field cbar"><label class="lbl" for="cl-sup">Supervisor</label><input type="text" id="cl-sup" data-cl="sup" list="cl-sup-list" autocomplete="off" placeholder="Type a name, e.g. Dr A Smith"><datalist id="cl-sup-list"></datalist></div></div>
   <section class="pbar" aria-label="Today's patients">
     <div class="phead"><span class="lbl">Today's patients</span><button type="button" class="addpt" id="addpt">+ New patient</button></div>
     <div class="plist" id="plist"></div>
@@ -398,6 +398,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
       <textarea id="out" spellcheck="true" aria-label="Note text, editable"></textarea>
       <div class="foot">
         <span>Nothing is sent anywhere. Don't type patient names, CHI or hospital numbers.</span>
+        <span>Notile is a writing aid, not a clinical decision tool. Check every note and chart before it goes into the record; you remain responsible for its accuracy.</span>
         <span class="draft"><span id="draftmsg">Notes save on this device and clear 12 hours after each patient is started.</span> <button type="button" class="linkbtn" id="clearDrafts">Clear all patients</button></span>
       </div>
     </aside>
@@ -1018,7 +1019,7 @@ const LT={g:'Letters',id:'gdpobt',name:'Letter to GDP: obturation',sections:[
  {t:'Letter',f:[
   {id:'linfo',type:'info',label:'',html:letterInfo,note:()=>''},
   X('gdp','Dear',{ph:'e.g. Dr Smith'}),
-  X('dept','From',{def:'Restorative Dentistry, Glasgow Dental Hospital'}),
+  X('dept','From',{ph:'e.g. Restorative Dentistry, your hospital'}),
   TH('tooth','Tooth (if different)'),
   S('outc','Treatment',['Root canal treatment completed','Root canal retreatment completed'],{def:'Root canal treatment completed'}),
   S('visits','Number of visits',['1','2','3','4 or more'])]},
@@ -1428,10 +1429,12 @@ applyCustom();
 
 // ---------- clinician & clinic (shared by every template; remembered on this device) ----------
 const CL={name:'',grade:'',gdc:'',sup:'',supo:'',clinic:'',seen:''};
-const supName=()=>(CL.supo||'').trim()||(CL.sup==='Other'?'':CL.sup);
+const supName=()=>(CL.sup||'').trim();
+const CLLISTS={clinics:[],sups:[]};
 const CLKEY='chairsideClinician_v1';
-try{const st=JSON.parse(localStorage.getItem(CLKEY)||'{}');Object.keys(st).forEach(k=>{if(st[k])CL[k]=st[k]});CL.clinic='';CL.seen=''}catch(e){}
-function saveCL(){try{localStorage.setItem(CLKEY,JSON.stringify({name:CL.name,grade:CL.grade,gdc:CL.gdc,sup:CL.sup,supo:CL.supo}))}catch(e){}}
+try{const st=JSON.parse(localStorage.getItem(CLKEY)||'{}');Object.keys(CL).forEach(k=>{if(st[k])CL[k]=st[k]});if(st.supo&&String(st.supo).trim())CL.sup=st.supo;if(CL.sup==='Other')CL.sup='';CL.supo='';CL.clinic='';CL.seen='';
+  ['clinics','sups'].forEach(k=>{if(Array.isArray(st[k]))CLLISTS[k]=st[k].filter(x=>typeof x==='string'&&x.trim()).slice(0,15)})}catch(e){}
+function saveCL(){try{localStorage.setItem(CLKEY,JSON.stringify({name:CL.name,grade:CL.grade,gdc:CL.gdc,sup:CL.sup,clinics:CLLISTS.clinics,sups:CLLISTS.sups}))}catch(e){}}
 
 // ---------- state ----------
 let state={}; let cur=T[0];
@@ -2002,13 +2005,12 @@ $('out').addEventListener('input',fillSecs);
 
 if(loadDrafts())setTimeout(()=>toast(PTS.length>1?`${PTS.length} patients restored`:'Draft restored'),300);else{PTS=[newPatient()];usePatient(0)}
 renderPBar();
-// clinics offered depend on the weekday (0 Sun … 6 Sat); A+E is offered every day
-const CLINICS=[['Beth Burns/CT Treatment',[1]],['Abisola Asuni/Perio NP',[3]],['Abisola Asuni/Endo NP',[3]],['Abisola/CT',[3]],['Andrew Paterson/FPR NP',[5]],['Gareth Calvert/CT',[5]],['Restorative A+E',[0,1,2,3,4,5,6]]];
-function fillClinics(){const d=new Date().getDay(),day=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d],wk=d===0||d===6;
-  const today=CLINICS.filter(c=>wk||c[1].includes(d)),rest=CLINICS.filter(c=>!today.includes(c)),o=n=>`<option>${esc(n)}</option>`;
-  $('cl-clinic').innerHTML='<option value=""></option>'+`<optgroup label="${wk?'All clinics':day}">${today.map(c=>o(c[0])).join('')}</optgroup>`+(rest.length?`<optgroup label="Other days">${rest.map(c=>o(c[0])).join('')}</optgroup>`:'');
-  if(!CL.clinic&&today.length===1)CL.clinic=today[0][0]}
-fillClinics();
+// clinics and supervisors: typed by each user, offered back from the ones used before on this device
+function fillCLLists(){const o=n=>`<option value="${esc(n)}"></option>`;$('cl-clinic-list').innerHTML=CLLISTS.clinics.map(o).join('');$('cl-sup-list').innerHTML=CLLISTS.sups.map(o).join('')}
+function rememberCL(k,v){v=(v||'').trim();if(!v)return;const l=CLLISTS[k].filter(x=>x.toLowerCase()!==v.toLowerCase());l.unshift(v);CLLISTS[k]=l.slice(0,15);saveCL();fillCLLists()}
+fillCLLists();
+$('cl-clinic').addEventListener('change',e=>rememberCL('clinics',e.target.value));
+$('cl-sup').addEventListener('change',e=>rememberCL('sups',e.target.value));
 function clSummary(){const a=[CL.name,CL.grade].filter(Boolean).join(', ');$('clsum').innerHTML=a?`${esc(a)}${CL.clinic?` <small>· ${esc(CL.clinic)}</small>`:''}`:'Add your name, grade and clinic'}
 document.querySelectorAll('[data-cl]').forEach(el=>{el.value=CL[el.dataset.cl]||'';el.addEventListener('input',()=>{CL[el.dataset.cl]=el.value;saveCL();clSummary();sync()})});
 if(!CL.name)$('clin').open=true;

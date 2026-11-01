@@ -17,3 +17,5 @@ The same chart is built into Notile (Dental chart button), where the summary and
 - Runs entirely in the browser. Nothing is sent anywhere.
 - Notile drafts are kept on the device you use and clear 12 hours after each patient is started. Standalone charts stay in that browser until deleted.
 - Do not type patient names, CHI or hospital numbers.
+- Notile and Notile Chart are writing and recording aids, not clinical decision tools. Check every note and chart before it goes into the record; the clinician remains responsible for its accuracy.
+- Clinic and supervisor names are typed by each user and remembered only on their own device.
