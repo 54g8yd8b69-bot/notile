@@ -736,7 +736,6 @@ function buildNote(p){
  const plan=[...pl,...bridgeLines(p,'pl'),...dentureLines(p,'pl')];
  out.push('Treatment plan: '+(plan.length?plan.join('; '):'none charted'));
  const b=p.bpe||{};
- out.push(...perioLines(p));
  if(Object.values(b).some(v=>v)){const c=k=>b[k]||'-';out.push(`BPE: ${c('UR')} | ${c('UA')} | ${c('UL')}`);out.push(`     ${c('LR')} | ${c('LA')} | ${c('LL')}`)}
  if(p.notes&&p.notes.trim())out.push('Notes: '+p.notes.trim());
  return out.join('\n');
