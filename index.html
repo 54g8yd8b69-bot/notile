@@ -207,6 +207,18 @@ input.oth:not(:placeholder-shown){border-style:solid;background:var(--bg)}
 .wjoin{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;flex-basis:100%}
 .wpat .chip{padding:5px 9px;font-size:.85rem}
 .wlr{border-bottom:1px solid var(--line)}
+.tgw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tgt{border-collapse:separate;border-spacing:0;font-size:.9rem;min-width:100%}
+.tgt th,.tgt td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+.tgt tr:last-child th,.tgt tr:last-child td{border-bottom:0}
+.tgt thead th{font-weight:700;color:var(--head);background:var(--bg);font-size:.95rem}
+.tgt th[scope=row]{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;font-size:.82rem;font-weight:600;color:var(--muted);border-right:1px solid var(--line);min-width:118px}
+.tgt thead th:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
+.tgt select,.tgt input{width:auto;min-width:92px;padding:6px 6px;font-size:.88rem;border-radius:8px;text-align:center}
+.tgt input{width:64px;min-width:0}
+.tgt select.on,.tgt input.on{border-color:var(--teal2);background:var(--chipon);font-weight:600}
+.tgt select.warn{border-color:#D97706;background:#FEF3C7;color:#7C2D12}
+.tgbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .wlh,.wlr{display:grid;grid-template-columns:minmax(48px,auto) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:6px;align-items:center}
 .wlh span{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .wlc{font-family:var(--mono);font-weight:700;font-size:.9rem}
@@ -658,6 +670,20 @@ const OD_SECTION={t:'Overdenture',f:[
 // ---------- trauma assessment helpers ----------
 const YN=(id,label,o={})=>S(id,label,['Yes','No'],o);
 const YND=(id,label,o={})=>[YN(id,label,o),X(id+'d',`${label} details`,{when:s=>(!o.when||o.when(s))&&s[id]==='Yes'})];
+// ---------- trauma grid: sensibility and clinical tests per tooth ----------
+const TGR=[['col','Colour',['Normal','Grey','Pink','Yellow']],['mob','Mobility',['0','I','II','III']],['ttp','TTP',['−','+']],['perc','Percussion note',['Normal','High (metallic)','Dull']],['ec','Ethyl chloride',['+','−','Delayed']],['ept','EPT',null],['sin','Sinus / swelling',['−','+']],['rad','Radiograph',['NAD','PDL widening','Root fracture','Resorption','PA radiolucency','Pulp canal obliteration','Displacement']]];
+const TGWARN={ept:v=>/^NR$/.test(v||''),col:v=>v&&v!=='Normal',mob:v=>v&&v!=='0',ttp:v=>v==='+',perc:v=>v&&v!=='Normal',ec:v=>v==='−'||v==='Delayed',sin:v=>v==='+',rad:v=>v&&v!=='NAD'};
+function tgTable(s,ts){const g=s.tgrid||{};if(!ts.length)return '<p class="sub" style="padding:12px 14px;margin:0">Choose the teeth tested above. Include adjacent and opposing teeth as controls.</p>';
+  return `<table class="tgt"><thead><tr><th scope="col">Test</th>${ts.map(t=>`<th scope="col">${esc(t)}</th>`).join('')}</tr></thead><tbody>${TGR.map(([k,l,o])=>`<tr><th scope="row">${l}</th>${ts.map(t=>{const v=(g[t]||{})[k]||'',cls=(v?'on':'')+(TGWARN[k]&&TGWARN[k](v)?' warn':'');
+    return `<td>${o?`<select data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" aria-label="${esc(t)} ${l}"><option value=""></option>${o.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('')}</select>`:`<input type="text" inputmode="numeric" maxlength="3" data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" value="${esc(v)}" placeholder="0–80" aria-label="${esc(t)} EPT reading (type NR for no response)">`}</td>`}).join('')}</tr>`).join('')}</tbody></table>`}
+function tgLine(t,r){if(!r)return '';const p=[];
+  if(r.col)p.push(`colour ${r.col.toLowerCase()}`);if(r.mob)p.push(`mobility ${r.mob==='0'?'0 (physiological)':'grade '+r.mob}`);
+  if(r.ttp)p.push(`TTP ${r.ttp==='+'?'positive':'negative'}`);if(r.perc)p.push(`percussion note ${r.perc.charAt(0).toLowerCase()+r.perc.slice(1)}`);
+  if(r.ec)p.push(`ethyl chloride ${r.ec==='+'?'positive':r.ec==='−'?'negative':'delayed response'}`);
+  if(r.ept){const v=String(r.ept).trim();p.push(/^nr$/i.test(v)?'EPT no response':`EPT ${v}`)}
+  if(r.sin)p.push(r.sin==='+'?'sinus / swelling present':'no sinus or swelling');if(r.rad)p.push(`radiograph: ${r.rad==='NAD'?'NAD':r.rad.charAt(0).toLowerCase()+r.rad.slice(1)}`);
+  return p.length?`– ${t}: ${p.join('; ')}`:''}
+function tgInjured(s){const out=new Set();['tcrown','tcfx','trfx','tdisp'].forEach(id=>{const m=s[id];if(m&&!Array.isArray(m))Object.values(m).forEach(a=>Array.isArray(a)&&a.forEach(t=>out.add(t)))});return [...out]}
 const tmHas=(s,id,k)=>!!(s[id]&&!Array.isArray(s[id])&&s[id][k]!==undefined);
 const avul=s=>tmHas(s,'tdisp','Avulsion');
 const mins=x=>{const n=parseFloat(String(x||'').replace(',','.'));return isNaN(n)?null:n};
@@ -798,6 +824,9 @@ const T=[
   TM('trfx','Root fracture',['Apical','Middle','Coronal'],[]),
   TM('tdisp','Displacement',['Concussion','Subluxation','Lateral luxation','Extrusion','Intrusion','Avulsion'],[]),
   M('tlat','Lateral luxation direction',['Mesial','Distal','Buccal','Palatal / lingual'],{when:s=>tmHas(s,'tdisp','Lateral luxation')})]},
+ {t:'Trauma grid',f:[
+  {id:'tgt',label:'Teeth tested',type:'teeth',noteFn:()=>''},
+  {id:'tgrid',label:'Results by tooth',type:'tgrid',teeth:'tgt'}]},
  {t:'Avulsion',f:[
   X('adry','Extra-alveolar dry time',{when:avul,short:true,ph:'minutes, approx.',fmt:v=>/^[\d.,\s]+$/.test(v)?`${v.trim()} min (approx.)`:v}),
   S('astore','Storage medium',['Milk','Saline','Saliva','HBSS','Dry','Replanted at scene'],{when:avul}),
@@ -1491,7 +1520,7 @@ function saveCL(){try{localStorage.setItem(CLKEY,JSON.stringify({name:CL.name,gr
 // ---------- state ----------
 let state={}; let cur=T[0];
 const allF=t=>t.sections.flatMap(x=>x.f);
-function defaults(t){const s={};allF(t).forEach(f=>{if(f.def!==undefined){const ok=o=>!f.options||f.options.includes(o);s[f.id]=Array.isArray(f.def)?f.def.filter(ok):(ok(f.def)?f.def:'')}if(f.type==='bpe')s[f.id]=['','','','','',''];if(f.type==='teeth')s[f.id]=[];if(f.type==='wl'||f.type==='ff'||f.type==='obtq')s[f.id]={};if(f.type==='implants')s[f.id]=[{}];if(f.type==='tfind')s[f.id]=[{teeth:[]}];if(f.type==='tmap')s[f.id]={};if(f.type==='cbr')s[f.id]=[{ab:[],po:[],des:''}];if(f.type==='bridges')s[f.id]=[{teeth:[]}]});return s}
+function defaults(t){const s={};allF(t).forEach(f=>{if(f.def!==undefined){const ok=o=>!f.options||f.options.includes(o);s[f.id]=Array.isArray(f.def)?f.def.filter(ok):(ok(f.def)?f.def:'')}if(f.type==='bpe')s[f.id]=['','','','','',''];if(f.type==='teeth')s[f.id]=[];if(f.type==='wl'||f.type==='ff'||f.type==='obtq')s[f.id]={};if(f.type==='implants')s[f.id]=[{}];if(f.type==='tfind')s[f.id]=[{teeth:[]}];if(f.type==='tmap')s[f.id]={};if(f.type==='tgrid')s[f.id]={};if(f.type==='cbr')s[f.id]=[{ab:[],po:[],des:''}];if(f.type==='bridges')s[f.id]=[{teeth:[]}]});return s}
 const blankState=()=>{const s={};T.forEach(t=>s[t.id]=defaults(t));return s};
 // ---------- today's patients: temporary drafts on this device only, each clears 12 h after it was started ----------
 const DKEY='chairsideDrafts_v2',DTTL=12*60*60*1000;let dTimer=null;
@@ -1555,6 +1584,7 @@ function fieldHTML(f,s){
   if(f.type==='ff') return `<div class="field" data-field="${f.id}"><span class="lbl">${f.label} <small>(per canal)</small></span><div class="fft"></div></div>`;
   if(f.type==='obtq') return `<div class="field" data-field="${f.id}"><span class="lbl">${f.label} <small>(GP length and compaction)</small></span><div class="oqt"></div></div>`;
   if(f.type==='wl') return `<div class="field" data-field="${f.id}"><span class="lbl">${f.label} <small>(working length = 0 reading − 0.5 mm)</small></span><div class="wlt"></div></div>`;
+  if(f.type==='tgrid') return `<div class="field" data-field="${f.id}"><div class="tgbar"><span class="lbl">${f.label} <small>(one column per tooth; amber = abnormal)</small></span><button type="button" class="addsug" data-tgadd="${f.teeth}">Add injured teeth</button></div><div class="tgw"></div></div>`;
   if(f.type==='teeth'){
     return `<div class="field" data-field="${f.id}"><span class="lbl">${f.label}</span><button type="button" class="toothbtn${v.length?' has':''}" id="${fid}" data-tf="${f.id}">${v.length?esc(toothTxt(v)):'Select tooth'}</button></div>`;
   }
@@ -1581,6 +1611,7 @@ function sync(){
       if(f.type==='ff'&&el){const cs=s.canals||[],key=cs.join('|')+'#'+(s.fsys||'');if(el.dataset.k!==key){el.dataset.k=key;const t=s.ff||(s.ff={}),sizes=ROT[s.fsys]||[];
         el.querySelector('.fft').innerHTML=!cs.length?'<p class="sub">Tick the canals located to choose a finishing file for each.</p>':cs.map(c=>`<div class="ffr"><span class="wlc">${esc(c)}</span><div class="chips compact" role="group" aria-label="${esc(c)} finishing file">${sizes.map(o=>{const cc=ISOC[ffCol(s.fsys,o)];return `<button type="button" class="chip${cc?' fc':''}${SYSCLS[s.fsys]?' '+SYSCLS[s.fsys]:''}"${cc?` style="--fc:${cc[0]};--fk:${cc[1]};--fb:${cc[2]||cc[0]}"`:''} data-ffc="${esc(c)}" data-o="${esc(o)}" aria-pressed="${t[c]===o}">${esc(o)}</button>`}).join('')}</div></div>`).join('')}}
       if(f.type==='obtq'&&el&&show){const key=(s.canals||[]).join('|');if(el.dataset.k!==key){el.dataset.k=key;renderOQ(el,s)}}
+      if(f.type==='tgrid'&&el){const ts=tsort(s[f.teeth]||[]),key=ts.join('|');if(el.dataset.k!==key){el.dataset.k=key;el.querySelector('.tgw').innerHTML=tgTable(s,ts)}}
       if(f.type==='wl'&&el){const cs=s.canals||[],key=cs.join('|')+'#'+(s.fsys||'');if(el.dataset.k!==key){el.dataset.k=key;const t=s.wl||(s.wl={});
         el.querySelector('.wlt').innerHTML=cs.length?`<div class="wlh"><span>Canal</span><span>0 reading</span><span>WL</span><span>MAF</span><span class="href">Reference</span></div>`+cs.map(c=>{const r=t[c]||{},id=`${cur.id}-wl-${c.replace(/\W/g,'')}`;
           return `<div class="wlr"><span class="wlc">${esc(c)}</span><input type="text" inputmode="decimal" id="${id}-z" data-wlc="${esc(c)}" data-wlk="z" value="${esc(r.z||'')}" placeholder="mm" aria-label="${esc(c)} 0 reading, mm"><input type="text" inputmode="decimal" id="${id}-wl" data-wlc="${esc(c)}" data-wlk="wl" value="${esc(r.wl||'')}" placeholder="mm" aria-label="${esc(c)} working length, mm">${mafCell(s,c,r,id)}<input type="text" class="wref" id="${id}-ref" data-wlc="${esc(c)}" data-wlk="ref" value="${esc(r.ref||'')}" placeholder="e.g. ${esc(c==='Single canal'?'incisal edge':c+' cusp')}" aria-label="${esc(c)} reference point">${patCell(c,r,cs)}</div>`}).join(''):'<p class="sub">Tick the canals located above to add their lengths.</p>'}}
@@ -1621,6 +1652,7 @@ function val0(f,s){
   const v=s[f.id];
   if(f.type==='multi'){const vv=Array.isArray(v)?v:(v?[v]:[]);if(!vv.length)return '';const a=f.fmt?vv.map(f.fmt):vv;return f.sentence?(a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a[0]):a.join(f.join??', ')}
   if(f.type==='cc') return ccNote(v);
+  if(f.type==='tgrid'){const ts=tsort(s[f.teeth]||[]);return ts.map(t=>tgLine(t,(v||{})[t])).filter(Boolean).join('\n')}
   if(f.type==='teeth') return toothTxt(v);
   if(f.type==='tmap'){const m=v&&!Array.isArray(v)?v:{};return f.options.filter(o=>m[o]!==undefined).map(o=>`– ${o}${Array.isArray(m[o])&&m[o].length?`: ${tsort(m[o]).join(', ')}`:''}`).join('\n')}
   if(f.type==='tfind')return (v||[]).map(tfLine).filter(Boolean).join('\n');
@@ -1646,7 +1678,7 @@ function build(){
   if(CL.clinic)out.push(`Clinic: ${CL.clinic}`);
   out.push('');
   cur.sections.forEach(sec=>{
-    const lines=sec.f.filter(f=>(!f.when||f.when(s))&&(!f.noNote||other(f,s))).map(f=>{const v=f.type==='info'?f.note(s):f.noNote?other(f,s):val(f,s);return v?(f.sentence?`${f.nl||f.label} ${v}`:(f.list||['disc','wl','ff','implants','bridges','tfind','tmap','obtq','cbr','cc'].includes(f.type))?`${f.label}:\n${v}`:`${f.label}: ${v}`):''}).filter(Boolean);
+    const lines=sec.f.filter(f=>(!f.when||f.when(s))&&(!f.noNote||other(f,s))).map(f=>{const v=f.type==='info'?f.note(s):f.noNote?other(f,s):val(f,s);return v?(f.sentence?`${f.nl||f.label} ${v}`:(f.list||['disc','wl','ff','implants','bridges','tfind','tmap','obtq','cbr','cc','tgrid'].includes(f.type))?`${f.label}:\n${v}`:`${f.label}: ${v}`):''}).filter(Boolean);
     if(lines.length&&!(Array.isArray(s.__off)&&s.__off.includes(sec.t))){out.push(sec.t.toUpperCase(),...lines,'')}
   });
   const chl=chartNoteLines();if(chl.length)out.push('DENTAL CHARTING',...chl,'');
@@ -1779,7 +1811,10 @@ $('toothDone').addEventListener('click',()=>{
 
 // ---------- events ----------
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;cur=T.find(t=>t.id===b.dataset.t);PTS[AP].cur=cur.id;renderPBar();renderTabs();renderForm();window.scrollTo({top:0})});
-$('form').addEventListener('click',e=>{const sx=e.target.closest('[data-secx]');if(sx){e.stopPropagation();const s=state[cur.id],sec=cur.sections[+sx.dataset.secx];if(!sec)return;
+$('form').addEventListener('click',e=>{const ta=e.target.closest('[data-tgadd]');if(ta){const s=state[cur.id],id=ta.dataset.tgadd,inj=tgInjured(s);
+  if(!inj.length){toast('Chart the injuries under Classification of injury first');return}
+  const all=tsort([...new Set([...(s[id]||[]),...inj])]);s[id]=all;const btn=document.querySelector(`[data-tf="${id}"]`);if(btn){btn.textContent=toothTxt(all);btn.classList.add('has')}markEdited();sync();saveDraft();toast(`Added ${inj.length} injured ${inj.length===1?'tooth':'teeth'}`);return}
+  const sx=e.target.closest('[data-secx]');if(sx){e.stopPropagation();const s=state[cur.id],sec=cur.sections[+sx.dataset.secx];if(!sec)return;
   const off=Array.isArray(s.__off)?s.__off.filter(t=>t!==sec.t):[];const was=Array.isArray(s.__off)&&s.__off.includes(sec.t);if(!was)off.push(sec.t);
   if(off.length)s.__off=off;else delete s.__off;
   const card=sx.closest('section.card');card.classList.toggle('off',!was);const h=card.querySelector('h2');const tg=h.querySelector('.offtag');if(!was&&!tg)h.insertAdjacentHTML('beforeend','<span class="offtag">Left out of note</span>');if(was&&tg)tg.remove();
@@ -1848,6 +1883,9 @@ $('form').addEventListener('click',e=>{const sx=e.target.closest('[data-secx]');
 $('form').addEventListener('input',e=>{
   markEdited();
   const el=e.target,s=state[cur.id];
+  if(el.dataset.tgt!==undefined){const g=s.tgrid||(s.tgrid={}),r=g[el.dataset.tgt]||(g[el.dataset.tgt]={}),k=el.dataset.tgk;let v=el.value;
+    if(k==='ept'){v=v.replace(/[^0-9nNrR]/g,'').toUpperCase();if(/[NR]/.test(v))v=v.replace(/[0-9]/g,'').slice(0,2);el.value=v}
+    if(v)r[k]=v;else delete r[k];el.classList.toggle('on',!!v);el.classList.toggle('warn',!!(TGWARN[k]&&TGWARN[k](v)));sync();return}
   if(el.dataset.oqm!==undefined){const t=s.obtq||(s.obtq={});(t[el.dataset.oqc]||(t[el.dataset.oqc]={})).mm=el.value;sync();return}
   if(el.dataset.tft){s.tfind[+el.dataset.tfi][el.dataset.tft]=el.value;sync();return}
   if(el.dataset.impt){const i=+el.closest('[data-imp]').dataset.imp;s.imps[i][el.dataset.impt]=el.value;sync();return}
