@@ -294,6 +294,9 @@ input.oth:not(:placeholder-shown){border-style:solid;background:var(--bg)}
 .pdres b{font-size:1rem}
 .pdres small{color:var(--muted)}
 .tmt{font-weight:400;opacity:.9;margin-left:4px;font-size:.88em}
+.lblrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.dict{font:inherit;font-size:.8rem;font-weight:500;color:var(--teal);background:none;border:1px solid transparent;border-radius:8px;padding:2px 8px;min-height:28px;cursor:pointer;flex:none}
+.dict:hover,.dict:focus-visible{border-color:var(--teal2);background:var(--chipon,transparent)}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .addsug{font:inherit;font-size:.82rem;font-weight:700;color:var(--head);background:transparent;border:1px solid var(--sug);border-radius:6px;padding:4px 10px;cursor:pointer}
 .chip[hidden]{display:none}
@@ -1610,7 +1613,8 @@ function fieldHTML(f,s){
   const ph=f.ph?` placeholder="${esc(f.ph)}"`:'';
   const c=f.area?`<textarea id="${fid}" data-f="${f.id}"${ph}>${esc(v||'')}</textarea>`
     :`<input id="${fid}" data-f="${f.id}" type="${f.type==='num'?'number':'text'}" class="${f.short||f.type==='num'?'short':''}" value="${esc(v||'')}"${ph}${f.type==='num'?' min="0" step="0.5"':''}>`;
-  return `<div class="field" data-field="${f.id}"><label class="lbl" for="${fid}">${f.label}</label>${c}</div>`;
+  const dk=!f.short&&f.type!=='num'?`<button type="button" class="dict" data-dict="${fid}" title="${esc(DICT.how)}" aria-label="Dictate into ${esc(f.label)}: ${esc(DICT.how)}">🎤 Dictate</button>`:'';
+  return `<div class="field" data-field="${f.id}"><div class="lblrow"><label class="lbl" for="${fid}">${f.label}</label>${dk}</div>${c}</div>`;
 }
 function sync(){
   const s=state[cur.id];
@@ -1795,6 +1799,14 @@ $('pickChips').addEventListener('click',e=>{const b=e.target.closest('[data-pk]'
 $('pickDone').addEventListener('click',()=>closePick(pickSel));
 $('pickClear').addEventListener('click',()=>closePick([]));
 $('pickDlg').addEventListener('cancel',e=>{e.preventDefault();closePick(null)});
+// ---------- dictation hint, matched to the device ----------
+const DICT=(()=>{const ua=navigator.userAgent||'',touchMac=/Macintosh/.test(ua)&&navigator.maxTouchPoints>1;
+  if(/iPhone|iPad|iPod/.test(ua)||touchMac)return {how:'tap the 🎤 on the keyboard',tip:'Now tap the 🎤 on the keyboard and speak. Tap it again to stop.'};
+  if(/Android/.test(ua))return {how:'tap the 🎤 on the keyboard',tip:'Now tap the 🎤 on the keyboard (Gboard) and speak. Tap it again to stop.'};
+  if(/Mac/.test(ua))return {how:'press Fn (🌐) twice',tip:'Now press Fn (🌐) twice and speak. Press Fn or Esc to stop.'};
+  if(/Windows/.test(ua))return {how:'press Windows key + H',tip:'Now press Windows key + H and speak. Press it again to stop. Say "full stop" or "new line" for punctuation.'};
+  if(/CrOS/.test(ua))return {how:'press Search + D',tip:'Now press Search + D (or Launcher + D) and speak.'};
+  return {how:'use your device\u2019s dictation',tip:'Start your device\u2019s dictation now and speak.'}})();
 // ---------- tooth picker (Palmer, as faced) ----------
 let tf=null, tsel=[];
 function drawTeeth(){
@@ -1947,7 +1959,10 @@ function copy(){
 }
 $('copy').addEventListener('click',copy);$('copy2').addEventListener('click',copy);
 function copied(){['copy','copy2'].forEach(id=>{const b=$(id);b.classList.add('done');b.textContent='Copied ✓';clearTimeout(b._t);b._t=setTimeout(()=>{b.classList.remove('done');b.textContent='Copy note'},1500)})}
-let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,1800)}
+let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||1800)}
+// dictation: the device's own voice typing, started by the user's shortcut (the page never records audio)
+document.addEventListener('click',e=>{const b=e.target.closest('[data-dict]');if(!b)return;e.preventDefault();e.stopPropagation();const el=document.getElementById(b.dataset.dict);
+  if(el){el.focus();try{const n=el.value.length;el.setSelectionRange(n,n)}catch(err){}}toast(DICT.tip,5000)},true);
 
 
 // ---------- presets: save the current selections on a template and reload them later ----------

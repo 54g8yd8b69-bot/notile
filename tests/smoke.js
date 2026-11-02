@@ -20,6 +20,9 @@ run({name:'Notile',fn:async()=>{
     expect((await pg.locator('[data-t^="ut_"]').allTextContents()).includes('Test template'),'template tab missing');
     const link=await pg.evaluate(()=>utLink(UT[0]));const p2=await page(link.replace(/^https?:\/\/[^/]+/,''));
     expect(await p2.isVisible('#utDlg'),'import dialog not shown');expect((await p2.inputValue('#utName'))==='Test template','wrong name');await noErrors(p2);await noErrors(pg)});
+  await test('dictate button focuses its text box',async()=>{const pg=await page('/notile/');await pg.click('[data-t="exam"]');
+    const b=pg.locator('[data-dict]:visible').first();expect(await b.count(),'no dictate button');const id=await b.getAttribute('data-dict');await b.click();await pg.waitForTimeout(150);
+    expect(await pg.evaluate(i=>document.activeElement&&document.activeElement.id===i,id),'text box not focused');expect(await pg.isVisible('#toast'),'no dictation tip');await noErrors(pg)});
   await test('built-in dental chart opens and returns a summary',async()=>{const pg=await page('/notile/');await pg.click('#chopen');await pg.waitForTimeout(1500);
     const fr=pg.frames().find(f=>f!==pg.mainFrame()&&f.url().includes('srcdoc'))||pg.frames()[1];expect(fr,'chart frame missing');
     expect((await fr.locator('[data-t]').count())>100,'chart did not draw');await fr.click('[data-s="o"]');await pg.waitForTimeout(500);await pg.click('#chDone');await pg.waitForTimeout(300);
