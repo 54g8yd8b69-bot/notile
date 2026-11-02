@@ -21,3 +21,7 @@ The same chart is built into Notile (Dental chart button), where the summary and
 - Do not type patient names, CHI or hospital numbers.
 - Notile and Notile Chart are writing and recording aids, not clinical decision tools. Check every note and chart before it goes into the record; the clinician remains responsible for its accuracy.
 - Clinic and supervisor names are typed by each user and remembered only on their own device.
+
+## Tests
+
+Every push runs browser tests (`tests/smoke.js`) on GitHub Actions: every template must build a note, the chart must draw, and template sharing and the trauma grid must work. Run them locally with `BASE=http://localhost:8765 node tests/smoke.js` while serving the site.

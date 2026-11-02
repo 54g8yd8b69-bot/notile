@@ -1,12 +1,18 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; upgrade-insecure-requests">
+<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; upgrade-insecure-requests">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}a.homelink{color:inherit;text-decoration:none}a.homelink:hover{opacity:.8}a.homelink:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:6px}
 </style>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B2E4A">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Notile">
 </head>
 <body>
 <title>Notile</title>
@@ -14,27 +20,27 @@
 <style>
 /* Layout: template tabs on top; tap-through form on the left, live note on the right (stacks on phone with a sticky copy bar) */
 :root{
-  --navy:#22343D; --teal:#0B827E; --teal2:#8AD3CE;
-  --bg:#FAFCFC; --surface:#FFFFFF; --fg:#2A3A43; --muted:#6A7C87; --line:#E9EFF2; --chipb:#E9EFF2;
-  --chip:#FFFFFF; --chip-fg:#2A3A43; --sel:#0B827E; --sel-fg:#FFFFFF; --sug:#0B827E; --note-bg:#FFFFFF; --note-fg:#2A3A43;
-  --note-line:#E9EFF2; --note-muted:#6A7C87; --note-hi:#EEF8F7;
-  --tab-on:#0B827E; --tab-on-fg:#FFFFFF; --head:#22343D; --btn:#0B827E; --btn-fg:#FFFFFF; --link:#0B827E;
-  --rbtxt:#1F5FD6; --rbfill:#2F6FD0; --goldtxt:#8A6508; --goldfill:#D4A82A; --greytxt:#5E656B; --greyfill:#6E757B; --shadow:0 1px 2px rgba(34,52,61,.04); --display:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif; --body:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif; --mono:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif; --chipon:#EEF8F7;
+  --navy:#0B2E4A; --teal:#1C7293; --teal2:#3FA9A0;
+  --bg:#F3F7F9; --surface:#FFFFFF; --fg:#10273A; --muted:#566C7D; --line:#D5E0E7; --chipb:#D5E0E7;
+  --chip:#FFFFFF; --chip-fg:#10273A; --sel:#1C7293; --sel-fg:#FFFFFF; --sug:#1C7293; --note-bg:#FFFFFF; --note-fg:#10273A;
+  --note-line:#D5E0E7; --note-muted:#566C7D; --note-hi:#E8F2F6;
+  --tab-on:#1C7293; --tab-on-fg:#FFFFFF; --head:#0B2E4A; --btn:#1C7293; --btn-fg:#FFFFFF; --link:#1C7293;
+  --rbtxt:#1F5FD6; --rbfill:#2F6FD0; --goldtxt:#8A6508; --goldfill:#D4A82A; --greytxt:#5E656B; --greyfill:#6E757B; --shadow:0 1px 2px rgba(34,52,61,.04); --display:Cambria,"Source Serif 4",Georgia,serif; --body:Calibri,Carlito,"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif; --mono:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif; --chipon:#E8F2F6;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --navy:#E8F1F4; --teal:#3CC4BC; --teal2:#2BB3AC;
-  --bg:#0D1317; --surface:#151D22; --fg:#E8F1F4; --muted:#97A8B2; --line:#27343B; --chipb:#27343B;
-  --chip:#151D22; --chip-fg:#E8F1F4; --sel:#3CC4BC; --sel-fg:#0D1317; --sug:#3CC4BC; --note-bg:#151D22; --note-fg:#E8F1F4;
-  --note-line:#27343B; --note-muted:#97A8B2; --note-hi:#12363A;
-  --tab-on:#3CC4BC; --tab-on-fg:#0D1317; --head:#E8F1F4; --btn:#3CC4BC; --btn-fg:#0D1317; --link:#3CC4BC;
-  --rbtxt:#8FB4FF; --rbfill:#2F6FD0; --goldtxt:#E8C55A; --goldfill:#D4A82A; --greytxt:#B9C0C6; --greyfill:#6E757B; --shadow:0 1px 3px rgba(0,0,0,.5); --chipon:#12363A; color-scheme:dark}}
+  --navy:#E3ECF2; --teal:#4FB3C9; --teal2:#5CC3B7;
+  --bg:#08141D; --surface:#0F2130; --fg:#E3ECF2; --muted:#93A9B9; --line:#24394A; --chipb:#24394A;
+  --chip:#0F2130; --chip-fg:#E3ECF2; --sel:#4FB3C9; --sel-fg:#08141D; --sug:#4FB3C9; --note-bg:#0F2130; --note-fg:#E3ECF2;
+  --note-line:#24394A; --note-muted:#93A9B9; --note-hi:#13324A;
+  --tab-on:#4FB3C9; --tab-on-fg:#08141D; --head:#E3ECF2; --btn:#4FB3C9; --btn-fg:#08141D; --link:#4FB3C9;
+  --rbtxt:#8FB4FF; --rbfill:#2F6FD0; --goldtxt:#E8C55A; --goldfill:#D4A82A; --greytxt:#B9C0C6; --greyfill:#6E757B; --shadow:0 1px 3px rgba(0,0,0,.5); --chipon:#13324A; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --navy:#E8F1F4; --teal:#3CC4BC; --teal2:#2BB3AC;
-  --bg:#0D1317; --surface:#151D22; --fg:#E8F1F4; --muted:#97A8B2; --line:#27343B; --chipb:#27343B;
-  --chip:#151D22; --chip-fg:#E8F1F4; --sel:#3CC4BC; --sel-fg:#0D1317; --sug:#3CC4BC; --note-bg:#151D22; --note-fg:#E8F1F4;
-  --note-line:#27343B; --note-muted:#97A8B2; --note-hi:#12363A;
-  --tab-on:#3CC4BC; --tab-on-fg:#0D1317; --head:#E8F1F4; --btn:#3CC4BC; --btn-fg:#0D1317; --link:#3CC4BC;
-  --rbtxt:#8FB4FF; --rbfill:#2F6FD0; --goldtxt:#E8C55A; --goldfill:#D4A82A; --greytxt:#B9C0C6; --greyfill:#6E757B; --shadow:0 1px 3px rgba(0,0,0,.5); --chipon:#12363A; color-scheme:dark}
+  --navy:#E3ECF2; --teal:#4FB3C9; --teal2:#5CC3B7;
+  --bg:#08141D; --surface:#0F2130; --fg:#E3ECF2; --muted:#93A9B9; --line:#24394A; --chipb:#24394A;
+  --chip:#0F2130; --chip-fg:#E3ECF2; --sel:#4FB3C9; --sel-fg:#08141D; --sug:#4FB3C9; --note-bg:#0F2130; --note-fg:#E3ECF2;
+  --note-line:#24394A; --note-muted:#93A9B9; --note-hi:#13324A;
+  --tab-on:#4FB3C9; --tab-on-fg:#08141D; --head:#E3ECF2; --btn:#4FB3C9; --btn-fg:#08141D; --link:#4FB3C9;
+  --rbtxt:#8FB4FF; --rbfill:#2F6FD0; --goldtxt:#E8C55A; --goldfill:#D4A82A; --greytxt:#B9C0C6; --greyfill:#6E757B; --shadow:0 1px 3px rgba(0,0,0,.5); --chipon:#13324A; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
 .wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 120px}
@@ -467,6 +473,13 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
   <div class="field" style="margin-top:10px"><label class="lbl" for="utName">Template name</label><input type="text" id="utName" placeholder="e.g. Splint review" maxlength="60"></div>
   <div class="utsecs" id="utSecs"></div>
   <div class="utadd"><button type="button" class="addpt" id="utAddSec">+ Add section</button></div>
+  <details class="edmore utshare" id="utShare"><summary id="utShareSum">Share or import a template</summary>
+    <div id="utShareOut"><p class="sub">Send this template to a colleague. They open the link (or paste the code into + New template) and can check it before saving. Templates never contain patient details.</p>
+      <div class="btns"><button type="button" class="btn sm ghost2" id="utCopyLink">Copy share link</button><button type="button" class="btn sm ghost2" id="utCopyCode">Copy code</button></div></div>
+    <div id="utShareIn"><p class="sub">Paste a template link or code a colleague sent you.</p>
+      <textarea id="utCode" rows="3" placeholder="Paste the link or code here"></textarea>
+      <div class="btns"><button type="button" class="btn sm ghost2" id="utImport">Load template</button></div></div>
+  </details>
   <p class="sub" id="utMsg" role="status"></p>
   <div class="dlgbtns"><button class="btn ghost2" type="button" id="utDel" hidden>Delete template</button><button class="btn ghost2" type="button" id="utCancel">Cancel</button><button class="btn primary" type="button" id="utSave">Save template</button></div>
 </dialog>
@@ -2103,7 +2116,21 @@ $('out').addEventListener('input',fillSecs);
 // ---------- your own templates: editor ----------
 let utWork=null;
 const utBlank=()=>({id:utId('ut_'),name:'',sections:[{t:'Assessment',f:[{id:utId('uf'),type:'teeth',label:'Tooth',opts:[],unit:''},{id:utId('uf'),type:'single',label:'Findings',opts:['No change','Improved','Worse'],unit:''},{id:utId('uf'),type:'long',label:'Notes',opts:[],unit:''}]},{t:'Plan',f:[{id:utId('uf'),type:'long',label:'Plan',opts:[],unit:''}]}]});
-function utOpen(id){const u=id&&UT.find(x=>x.id===id);utWork=JSON.parse(JSON.stringify(u||utBlank()));
+// share a template as a link or code (structure only: names, sections, fields, options)
+const UTPFX='NOTILE1:';
+function utEncode(u){const o={v:1,name:u.name,sections:u.sections.map(sec=>({t:sec.t,f:sec.f.map(x=>({type:x.type,label:x.label,opts:x.opts,unit:x.unit}))}))};
+  return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function utDecode(txt){let c=String(txt||'').trim();const i=c.indexOf('#tpl=');if(i>=0)c=c.slice(i+5);if(c.startsWith(UTPFX))c=c.slice(UTPFX.length);c=c.replace(/\s+/g,'');
+  const b=c.replace(/-/g,'+').replace(/_/g,'/');const o=JSON.parse(decodeURIComponent(escape(atob(b+'==='.slice((b.length+3)%4)))));
+  if(!o||!Array.isArray(o.sections))throw new Error('bad');const u=utSanitize([{name:o.name,sections:o.sections}])[0];u.id=utId('ut_');
+  let n=u.name;if(T.some(t=>t.name.toLowerCase()===n.toLowerCase()))n=utClean(n+' (shared)',60);u.name=n;return u}
+function utLink(u){return location.origin+location.pathname+'#tpl='+utEncode(u)}
+function utCopy2(txt,ok){const fb=()=>{const t=$('utCode');t.value=txt;$('utShareIn').hidden=false;t.focus();t.select();$('utMsg').textContent='Copying was blocked. The text is selected in the box: copy it with your device.'};
+  try{navigator.clipboard.writeText(txt).then(()=>{$('utMsg').textContent=ok},fb)}catch(e){fb()}}
+function utLoadShared(u,how){utWork=u;$('utTitle').textContent='New template (shared)';$('utName').value=u.name;$('utDel').hidden=true;utShareMode(false);utRender();
+  $('utMsg').textContent=`${how} Check it, then tap Save template to add it to My templates.`}
+function utShareMode(isEdit){$('utShareOut').hidden=!isEdit;$('utShareIn').hidden=isEdit;$('utShareSum').textContent=isEdit?'Share this template':'Import a shared template';$('utShare').open=false;$('utCode').value=''}
+function utOpen(id){const u=id&&UT.find(x=>x.id===id);utWork=JSON.parse(JSON.stringify(u||utBlank()));utShareMode(!!u);
   $('utTitle').textContent=u?`Edit template: ${u.name}`:'New template';$('utName').value=utWork.name;$('utDel').hidden=!u;$('utMsg').textContent='';utRender();
   try{$('utDlg').showModal()}catch(e){$('utDlg').setAttribute('open','')}if(!u)$('utName').focus()}
 function utClose(){$('utDlg').close?.();$('utDlg').removeAttribute('open')}
@@ -2126,6 +2153,9 @@ $('utDlg').addEventListener('click',e=>{const mv=e.target.closest('[data-umv]'),
   if(af){const sec=utWork.sections[+af.dataset.uaddf];sec.f.push({id:utId('uf'),type:'text',label:'',opts:[],unit:''});utRender();const ins=$('utSecs').querySelectorAll(`[data-us="${af.dataset.uaddf}"][data-uk="label"]`);if(ins.length)ins[ins.length-1].focus()}});
 $('utAddSec').addEventListener('click',()=>{utWork.sections.push({t:'',f:[{id:utId('uf'),type:'text',label:'',opts:[],unit:''}]});utRender();const ins=$('utSecs').querySelectorAll('.uthead input');if(ins.length)ins[ins.length-1].focus()});
 $('utCancel').addEventListener('click',utClose);
+$('utCopyLink').addEventListener('click',()=>{const u=UT.find(x=>x.id===utWork.id)||utWork;utCopy2(utLink(u),'Share link copied. Paste it into an email or Teams message.')});
+$('utCopyCode').addEventListener('click',()=>{const u=UT.find(x=>x.id===utWork.id)||utWork;utCopy2(UTPFX+utEncode(u),'Template code copied.')});
+$('utImport').addEventListener('click',()=>{try{utLoadShared(utDecode($('utCode').value),'Shared template loaded.')}catch(e){$('utMsg').textContent="That doesn't look like a Notile template link or code. Paste the whole thing and try again."}});
 function utInstall(u){const t=utBuild(u),i=T.findIndex(x=>x.id===u.id);if(i>=0)T[i]=t;else T.push(t);applyCustom();
   PTS.forEach(p=>{const old=p.state[u.id]||{},s=defaults(t),ids=new Set(allF(t).map(f=>f.id));Object.keys(old).forEach(k=>{if(ids.has(k)||k==='__ed')s[k]=old[k]});p.state[u.id]=s});
   if(cur.id===u.id)cur=t;return t}
@@ -2152,6 +2182,10 @@ $('utDel').addEventListener('click',e=>{const b=e.currentTarget;if(!utDelArmed){
 $('tabs').addEventListener('click',e=>{if(e.target.closest('#utNew'))utOpen()});
 $('utEdit').addEventListener('click',()=>{if(cur.user)utOpen(cur.id)});
 
+// a shared template link opens the builder with it loaded, ready to check and save
+function utFromHash(){const h=location.hash||'';if(!h.startsWith('#tpl='))return;history.replaceState(null,'',location.pathname+location.search);
+  try{const u=utDecode(h);utOpen();utLoadShared(u,'A colleague shared this template with you.')}catch(e){toast("That template link didn't work. Ask for the code instead.")}}
+addEventListener('hashchange',utFromHash);setTimeout(utFromHash,400);
 if(loadDrafts())setTimeout(()=>toast(PTS.length>1?`${PTS.length} patients restored`:'Draft restored'),300);else{PTS=[newPatient()];usePatient(0)}
 renderPBar();
 // clinics and supervisors: typed by each user, offered back from the ones used before on this device
@@ -2167,5 +2201,6 @@ clSummary();
 renderTabs();renderForm();
 </script>
 
+<script>if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
 </body>
 </html>
