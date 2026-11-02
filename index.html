@@ -675,7 +675,7 @@ const TGR=[['col','Colour',['Normal','Grey','Pink','Yellow']],['mob','Mobility',
 const TGWARN={ept:v=>/^NR$/.test(v||''),col:v=>v&&v!=='Normal',mob:v=>v&&v!=='0',ttp:v=>v==='+',perc:v=>v&&v!=='Normal',ec:v=>v==='−'||v==='Delayed',sin:v=>v==='+',rad:v=>v&&v!=='NAD'};
 function tgTable(s,ts){const g=s.tgrid||{};if(!ts.length)return '<p class="sub" style="padding:12px 14px;margin:0">Choose the teeth tested above. Include adjacent and opposing teeth as controls.</p>';
   return `<table class="tgt"><thead><tr><th scope="col">Test</th>${ts.map(t=>`<th scope="col">${esc(t)}</th>`).join('')}</tr></thead><tbody>${TGR.map(([k,l,o])=>`<tr><th scope="row">${l}</th>${ts.map(t=>{const v=(g[t]||{})[k]||'',cls=(v?'on':'')+(TGWARN[k]&&TGWARN[k](v)?' warn':'');
-    return `<td>${o?`<select data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" aria-label="${esc(t)} ${l}"><option value=""></option>${o.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('')}</select>`:`<input type="text" inputmode="numeric" maxlength="3" data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" value="${esc(v)}" placeholder="0–80" aria-label="${esc(t)} EPT reading (type NR for no response)">`}</td>`}).join('')}</tr>`).join('')}</tbody></table>`}
+    return `<td>${o?`<select data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" aria-label="${esc(t)} ${l}"><option value=""></option>${o.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('')}</select>`:`<input type="text" inputmode="numeric" maxlength="2" data-tgt="${esc(t)}" data-tgk="${k}" class="${cls}" value="${esc(v)}" placeholder="0–64" aria-label="${esc(t)} EPT reading 0 to 64 (type NR for no response)">`}</td>`}).join('')}</tr>`).join('')}</tbody></table>`}
 function tgLine(t,r){if(!r)return '';const p=[];
   if(r.col)p.push(`colour ${r.col.toLowerCase()}`);if(r.mob)p.push(`mobility ${r.mob==='0'?'0 (physiological)':'grade '+r.mob}`);
   if(r.ttp)p.push(`TTP ${r.ttp==='+'?'positive':'negative'}`);if(r.perc)p.push(`percussion note ${r.perc.charAt(0).toLowerCase()+r.perc.slice(1)}`);
@@ -1884,7 +1884,7 @@ $('form').addEventListener('input',e=>{
   markEdited();
   const el=e.target,s=state[cur.id];
   if(el.dataset.tgt!==undefined){const g=s.tgrid||(s.tgrid={}),r=g[el.dataset.tgt]||(g[el.dataset.tgt]={}),k=el.dataset.tgk;let v=el.value;
-    if(k==='ept'){v=v.replace(/[^0-9nNrR]/g,'').toUpperCase();if(/[NR]/.test(v))v=v.replace(/[0-9]/g,'').slice(0,2);el.value=v}
+    if(k==='ept'){v=v.replace(/[^0-9nNrR]/g,'').toUpperCase();if(/[NR]/.test(v))v=v.replace(/[0-9]/g,'').slice(0,2);else{v=v.slice(0,2);if(v&&+v>64)v='64'}el.value=v}
     if(v)r[k]=v;else delete r[k];el.classList.toggle('on',!!v);el.classList.toggle('warn',!!(TGWARN[k]&&TGWARN[k](v)));sync();return}
   if(el.dataset.oqm!==undefined){const t=s.obtq||(s.obtq={});(t[el.dataset.oqc]||(t[el.dataset.oqc]={})).mm=el.value;sync();return}
   if(el.dataset.tft){s.tfind[+el.dataset.tfi][el.dataset.tft]=el.value;sync();return}
