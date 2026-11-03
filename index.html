@@ -940,6 +940,31 @@ const T=[
   X('tlab','Lab instructions',{area:true,when:s=>!!s.tout&&s.tout!=='Accepted, proceed to fit'}),
   X('next','Next visit',{ph:'e.g. RBB fit'})]}
 ]},
+{g:'Restorative',id:'fbr',name:'Bonded retainer fit',sections:[
+ {t:'Pre-op',f:[...MH,
+  S('farch','Arch',['Upper','Lower','Upper and lower'],{def:'Lower'}),
+  TH('fteeth','Teeth bonded'),
+  S('freason','Reason',['Post-orthodontic retention','Retention after diastema closure','Periodontal splinting','Retention of spaced teeth','Replacement of failed retainer']),
+  S('ftype','Retainer',['Multistrand stainless steel wire','Dead-soft braided wire','Fibre-reinforced composite (everStick)','Fibre-reinforced composite (Ribbond)','CAD/CAM nitinol wire','Gold chain']),
+  S('fmade','Made',['Lab-made on model, transfer jig','Lab-made on model, silicone key','Adapted chairside'],{def:'Lab-made on model, transfer jig'}),
+  S('fold','Previous retainer',['None','Removed, composite cleaned off','Partly debonded, repaired','Left in place'],{def:'None'}),
+  CONSENT]},
+ {t:'Isolation',f:[...ISO(['Cotton wool rolls','Optragate'])]},
+ {t:'Bonding',f:[
+  M('fprep','Tooth preparation',['Pumice and water prophylaxis','Calculus removed','Lingual enamel lightly roughened','Air abrasion (aluminium oxide)'],{def:['Pumice and water prophylaxis']}),
+  M('fetch','Etch',['37% phosphoric acid 30 s','Rinsed and dried','Frosty enamel confirmed','Self-etch primer'],{def:['37% phosphoric acid 30 s','Rinsed and dried','Frosty enamel confirmed']}),
+  S('fprim','Primer / bond',['Transbond XT primer','Scotchbond Universal','Optibond FL','Clearfil SE Bond','Assure Plus']),
+  S('fcomp','Composite',['Transbond LR','Transbond XT','Flowable composite','Packable composite','G-aenial Universal Injectable']),
+  M('fpos','Wire held with',['Transfer jig','Silicone key','Floss ligatures','Finger pressure','Wire held passive while curing']),
+  M('fcure','Curing',['Spot cured to tack, then each tooth cured fully','Each tooth cured 20 s','Each tooth cured 40 s'],{def:['Each tooth cured 20 s']})]},
+ {t:'Checks',f:[
+  M('fchk','Checked',['Wire passive, no activation','Bonded to every tooth','Wire clear of occlusion in ICP and protrusion','Wire clear of gingivae','Contacts flossable','Excess composite removed','Composite smoothed and polished','Patient comfortable with tongue feel'],{def:['Wire passive, no activation','Bonded to every tooth','Wire clear of occlusion in ICP and protrusion','Excess composite removed','Composite smoothed and polished']}),
+  S('fvfr','Removable retainer as well',['Not provided','Upper VFR, night wear','Lower VFR, night wear','Upper and lower VFRs, night wear','Existing VFR checked and fits'],{def:'Not provided'}),
+  X('fphoto','Records',{ph:'e.g. clinical photographs taken'})]},
+ {t:'Advice',f:[
+  M('fadv','Advice',['Shown how to clean around the wire','Superfloss / floss threader demonstrated','Interdental brushes advised','Avoid biting hard food with the front teeth','Check the wire with tongue each day','Return promptly if the wire breaks or comes loose','Retention is long term','Retainer to be checked at every dental visit'],{def:['Shown how to clean around the wire','Superfloss / floss threader demonstrated','Avoid biting hard food with the front teeth','Return promptly if the wire breaks or comes loose','Retention is long term']}),
+  X('next','Next visit',{ph:'e.g. review 3 months'})]}
+]},
 {g:'Restorative',id:'endo',name:'Endodontics',sections:[
  {t:'Pre-op',f:[...MH,TH(),
   ...BES_DX,
@@ -1263,6 +1288,20 @@ treat:{after:'Pre-op',f:[
     I('Gum recession','Gums may shrink back after debridement, with more sensitivity or gaps between teeth.',{rel:s=>has(s,'txtype','Root surface debridement'),sug:s=>has(s,'txtype','Root surface debridement')}),
     I('Discomfort','Some discomfort during and after treatment.'),
     LA_RISK]),
+  ...OUTCOME]},
+fbr:{after:'Pre-op',f:[
+  D('dopt','Options discussed',[
+    I('Bonded retainer','Fixed bonded retainer on the lingual or palatal surfaces.',{sug:()=>true}),
+    I('Removable retainer','Removable vacuum formed retainer worn at night.'),
+    I('Both','Bonded retainer with a removable retainer as back-up.',{sug:s=>/VFR/.test(s.fvfr||'')}),
+    I('No retention','No retention, accepting that the teeth may move.')]),
+  D('drisk','Risks discussed',[
+    I('Relapse','Teeth tend to move back without retention; retention is long term.',{sug:()=>true}),
+    I('Debond / breakage','The wire can come loose or break, and teeth can move if it is not repaired promptly.',{sug:()=>true}),
+    I('Unwanted movement','A wire that is not passive, or that becomes distorted, can move teeth unexpectedly.'),
+    I('Plaque and calculus','Plaque and calculus can build up around the wire, so careful cleaning is needed to avoid gum disease and decay.',{sug:()=>true}),
+    I('Feel','The wire may feel strange to the tongue for a few days.'),
+    I('Maintenance','The retainer needs checking at dental visits and the patient is responsible for long-term upkeep.',{rel:s=>s.freason==='Post-orthodontic retention'})]),
   ...OUTCOME]},
 vfr:{after:'Visit',f:[
   D('dopt','Options discussed',[
