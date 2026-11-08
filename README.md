@@ -14,6 +14,10 @@ Open the chart: https://notile.co.uk/notile/chart/
 
 The same chart is built into Notile (Dental chart button), where the summary and image go into the main note.
 
+## Results from Guide Card
+
+On notile.co.uk, the BSP periodontal diagnosis, IOTN and RD-IOTN tools in Guide Card have a **Send to Notile** button. The result waits in a bar above the note until you tap **Add to** the patient you mean (or Dismiss); it then appears in the note under *Assessments (from Guide Card)*. It is passed through this browser's storage only and clears after 12 hours.
+
 ## Privacy
 
 - Runs entirely in the browser. Nothing is sent anywhere.

@@ -31,4 +31,13 @@ run({name:'Notile',fn:async()=>{
     const note=await pg.textContent('#note');expect(/Existing restorations/.test(note),'note missing');expect(!/6PPC/.test(note),'6PPC should not be in note');
     await pg.click('#tabPerio');await pg.waitForTimeout(300);expect((await pg.locator('#perioGrid .pin').count())>100,'perio grid missing');await pg.click('#tabChart');
     const [dl]=await Promise.all([pg.waitForEvent('download',{timeout:8000}),pg.click('#savePng')]);expect(/\.png$/.test(dl.suggestedFilename()),'no png');await noErrors(pg)});
+  await test('a result sent from Guide Card can be added to the note, persists and removed',async()=>{const pg=await page('/notile/');
+    await pg.evaluate(()=>localStorage.setItem('notile:inbox',JSON.stringify([{id:'gc1',src:'BSP periodontal diagnosis',text:'BPE: 4 3 2 / 2 3 4.\nDiagnosis: Generalised periodontitis stage III, grade B, currently unstable.',at:Date.now()}])));
+    await pg.reload();await pg.waitForTimeout(500);
+    expect(await pg.isVisible('#gcbar [data-gcadd="gc1"]'),'waiting result not shown');expect(!/FROM GUIDE CARD/.test(await pg.inputValue('#out')),'added before the user chose a patient');
+    await pg.click('#gcbar [data-gcadd="gc1"]');await pg.waitForTimeout(300);
+    const out=await pg.inputValue('#out');expect(/ASSESSMENTS \(FROM GUIDE CARD\)\nBSP periodontal diagnosis:\n  BPE: 4 3 2 \/ 2 3 4\.\n  Diagnosis: Generalised periodontitis stage III/.test(out),'note missing Guide Card section: '+out.slice(-300));
+    expect(await pg.evaluate(()=>!localStorage.getItem('notile:inbox')),'inbox not cleared');
+    await pg.waitForTimeout(700);await pg.reload();await pg.waitForTimeout(500);expect(/FROM GUIDE CARD/.test(await pg.inputValue('#out')),'not kept with the patient draft');
+    await pg.click('#gcbar [data-gcrm="0"]');await pg.waitForTimeout(200);expect(!/FROM GUIDE CARD/.test(await pg.inputValue('#out')),'remove did not work');await noErrors(pg)});
 }});

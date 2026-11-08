@@ -383,6 +383,11 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
 .chstat{font-weight:600;font-size:.92rem;min-width:0}
 .chstat small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
 .chartbar .btn{min-height:38px;padding:6px 12px;font-size:.88rem}
+.gcbar{margin:8px 12px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.gcrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.gcrow b{font-size:.92rem}.gcrow small{display:block;color:var(--muted);font-size:.8rem;white-space:pre-line}
+.gcrow.new{border-left:3px solid var(--teal,#1C7293);padding-left:8px}
+.gcbar .btn{min-height:36px;padding:5px 11px;font-size:.86rem}.gcbar .lbl{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .chopts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:.86rem}
 .chopts label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .chopts input{accent-color:var(--teal);width:17px;height:17px;margin:0}
@@ -440,6 +445,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
         <div class="chtop"><span class="chstat" id="chstat">No chart for this patient</span><button class="btn ghost" type="button" id="chopen2">Open chart</button></div>
         <div class="chopts" id="chopts" hidden><label><input type="checkbox" id="chText"> Chart summary in note</label><label><input type="checkbox" id="chImg"> Chart image with Copy note</label><button class="linkbtn" type="button" id="chCopyImg">Copy image only</button></div>
       </div>
+      <div class="gcbar" id="gcbar" hidden aria-label="Results from Guide Card"></div>
       <div class="edbar" id="edbar" hidden><span>Edited by hand. Changes in the form won't update it.</span><button class="btn ghost" type="button" id="regen">Discard edits</button></div>
       <textarea id="out" spellcheck="true" aria-label="Note text, editable"></textarea>
       <div class="foot">
@@ -1589,10 +1595,10 @@ function loadDrafts(){try{localStorage.removeItem('chairsideDrafts_v1');const d=
   const live=d.pts.filter(p=>Date.now()-p.t<DTTL);if(!live.length){localStorage.removeItem(DKEY);return false}
   PTS=live.map(p=>{const s=blankState();Object.keys(p.state||{}).forEach(id=>{if(s[id])Object.assign(s[id],p.state[id])});return {...p,label:'',state:s}});
   pseq=Math.max(...PTS.map(p=>p.n||0));const i=PTS.findIndex(p=>p.id===d.active);usePatient(i<0?0:i);return true}catch(e){return false}}
-function isBlank(p){return T.every(t=>JSON.stringify(p.state[t.id])===JSON.stringify(defaults(t)))&&!p.label.trim()&&!(p.chart&&!p.chart.empty)}
+function isBlank(p){return T.every(t=>JSON.stringify(p.state[t.id])===JSON.stringify(defaults(t)))&&!p.label.trim()&&!(p.chart&&!p.chart.empty)&&!(p.gc&&p.gc.length)}
 function saveDraft(){clearTimeout(dTimer);dTimer=setTimeout(()=>{PTS[AP].cur=cur.id;try{
-  const keep=PTS.filter(p=>!isBlank(p)||p===PTS[AP]).map(p=>{const ch={};T.forEach(t=>{if(JSON.stringify(p.state[t.id])!==JSON.stringify(defaults(t)))ch[t.id]=p.state[t.id]});return {id:p.id,label:p.label,t:p.t,cur:p.cur,copied:p.copied,n:p.n,state:ch,chart:p.chart&&!p.chart.empty?p.chart:undefined}});
-  if(keep.length===1&&!Object.keys(keep[0].state).length&&!keep[0].label.trim()&&!keep[0].chart)localStorage.removeItem(DKEY);
+  const keep=PTS.filter(p=>!isBlank(p)||p===PTS[AP]).map(p=>{const ch={};T.forEach(t=>{if(JSON.stringify(p.state[t.id])!==JSON.stringify(defaults(t)))ch[t.id]=p.state[t.id]});return {id:p.id,label:p.label,t:p.t,cur:p.cur,copied:p.copied,n:p.n,state:ch,chart:p.chart&&!p.chart.empty?p.chart:undefined,gc:p.gc&&p.gc.length?p.gc:undefined}});
+  if(keep.length===1&&!Object.keys(keep[0].state).length&&!keep[0].label.trim()&&!keep[0].chart&&!keep[0].gc)localStorage.removeItem(DKEY);
   else localStorage.setItem(DKEY,JSON.stringify({active:PTS[AP].id,pts:keep}))}catch(e){}draftMsg()},400)}
 function draftMsg(){const el=document.getElementById('draftmsg');if(!el)return;
   const saved=PTS.filter(p=>!isBlank(p));
@@ -1739,6 +1745,7 @@ function build(){
     if(lines.length&&!(Array.isArray(s.__off)&&s.__off.includes(sec.t))){out.push(sec.t.toUpperCase(),...lines,'')}
   });
   const chl=chartNoteLines();if(chl.length)out.push('DENTAL CHARTING',...chl,'');
+  const gcl=gcNoteLines();if(gcl.length)out.push('ASSESSMENTS (FROM GUIDE CARD)',...gcl,'');
   const sig=[CL.name,CL.grade].filter(Boolean).join(', ')+(CL.gdc?` (GDC ${CL.gdc})`:'');
   if(sig.trim())out.push(sig);
   if(supName())out.push(`Supervisor: ${supName()}`);
@@ -2119,6 +2126,29 @@ $('chCopyImg').addEventListener('click',()=>{const c=PTS[AP].chart;if(!c||!c.svg
   try{if(!window.ClipboardItem||!navigator.clipboard||!navigator.clipboard.write)throw 0;
     navigator.clipboard.write([new ClipboardItem({'image/png':chPNG(c.svg)})]).then(()=>toast('Chart image copied'),()=>toast('This browser blocked image copying here'))}
   catch(err){toast('This browser blocked image copying here')}});
+
+// ---------- results sent from Guide Card on this device (BSP diagnosis, IOTN, RD-IOTN) ----------
+// Guide Card writes them to localStorage 'notile:inbox'; nothing leaves the device. They wait here until added to a
+// patient's note (one tap, so a result can't land on the wrong patient) or dismissed, and expire after 12 hours.
+const GCKEY='notile:inbox';
+function gcInbox(){try{const b=JSON.parse(localStorage.getItem(GCKEY)||'[]');return Array.isArray(b)?b.filter(x=>x&&x.text&&x.src&&Date.now()-x.at<DTTL):[]}catch(e){return []}}
+function gcSave(b){try{b.length?localStorage.setItem(GCKEY,JSON.stringify(b)):localStorage.removeItem(GCKEY)}catch(e){}}
+function gcNoteLines(){const g=PTS[AP]&&PTS[AP].gc;if(!g||!g.length)return [];return g.flatMap(x=>[`${x.src}:`,...String(x.text).split('\n').filter(l=>l.trim()).map(l=>'  '+l.trim())])}
+function renderGC(){const el=$('gcbar');if(!el||!PTS[AP])return;const box=gcInbox(),mine=(PTS[AP]&&PTS[AP].gc)||[];
+  if(!box.length&&!mine.length){el.hidden=true;el.innerHTML='';return}
+  el.hidden=false;
+  el.innerHTML=(box.length?`<span class="lbl">Waiting from Guide Card</span>`+box.map(x=>`<div class="gcrow new"><span><b>${esc(x.src)}</b><small>${esc(x.text)}</small></span><span><button class="btn primary" type="button" data-gcadd="${esc(x.id)}">Add to ${esc(pLabel(PTS[AP]))}</button> <button class="btn ghost" type="button" data-gcdis="${esc(x.id)}">Dismiss</button></span></div>`).join(''):'')+
+    (mine.length?`<span class="lbl">From Guide Card, in this note</span>`+mine.map((x,i)=>`<div class="gcrow"><span><b>${esc(x.src)}</b></span><button class="btn ghost" type="button" data-gcrm="${i}">Remove</button></div>`).join(''):'')}
+$('gcbar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const box=gcInbox();
+  if(b.dataset.gcadd){const x=box.find(y=>y.id===b.dataset.gcadd);if(!x)return renderGC();const p=PTS[AP];p.gc=(p.gc||[]).filter(y=>y.src!==x.src).concat({src:x.src,text:x.text});
+    gcSave(box.filter(y=>y!==x));markEdited();sync();saveDraft();toast(`Added to ${pLabel(p)}`)}
+  else if(b.dataset.gcdis){gcSave(box.filter(y=>y.id!==b.dataset.gcdis))}
+  else if(b.dataset.gcrm){const p=PTS[AP];p.gc=(p.gc||[]).filter((y,i)=>i!==+b.dataset.gcrm);markEdited();sync();saveDraft()}
+  renderGC()});
+addEventListener('storage',e=>{if(e.key===GCKEY||e.key===null)renderGC()});
+addEventListener('focus',renderGC);document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderGC()});
+{const rp2=renderPBar;renderPBar=function(){rp2();renderGC()}}
+renderGC();
 
 // ---------- link to Dental Set-App, opened on the matching procedure ----------
 const SETAPP='/set-app/';
