@@ -31,6 +31,14 @@ run({name:'Notile',fn:async()=>{
     const note=await pg.textContent('#note');expect(/Existing restorations/.test(note),'note missing');expect(!/6PPC/.test(note),'6PPC should not be in note');
     await pg.click('#tabPerio');await pg.waitForTimeout(300);expect((await pg.locator('#perioGrid .pin').count())>100,'perio grid missing');await pg.click('#tabChart');
     const [dl]=await Promise.all([pg.waitForEvent('download',{timeout:8000}),pg.click('#savePng')]);expect(/\.png$/.test(dl.suggestedFilename()),'no png');await noErrors(pg)});
+  await test('discussion and advice tiles write full sentences in every template',async()=>{const pg=await page('/notile/');
+    const bad=await pg.evaluate(()=>{const out=[];T.forEach(t=>{if(t.letter)return;document.getElementById('tab-'+t.id).click();const s=state[t.id];
+      cur.sections.flatMap(x=>x.f).forEach(f=>{if(f.type==='disc')s[f.id]=f.items.map(i=>i.k);else if(f.sent)s[f.id]=f.options.slice()});
+      build().split('\n').forEach(l=>{if(/undefined|NaN|\[object/.test(l))out.push(t.id+': '+l)});
+      if(!cur.sections.some(x=>x.f.some(f=>f.type==='disc')))out.push(t.id+': no discussion tiles')});return out});
+    expect(!bad.length,bad.slice(0,3).join(' | '));
+    await pg.evaluate(()=>{state.xla.poi=[]});await pg.click('#tab-direct');await pg.click('#tab-xla');await pg.locator('.chip:visible',{hasText:'Numbness advice'}).first().click();
+    expect((await pg.inputValue('#out')).includes('– Advised to avoid eating, hot drinks'),'advice tile did not write its sentence');await noErrors(pg)});
   await test('a result sent from Guide Card can be added to the note, persists and removed',async()=>{const pg=await page('/notile/');
     await pg.evaluate(()=>localStorage.setItem('notile:inbox',JSON.stringify([{id:'gc1',src:'BSP periodontal diagnosis',text:'BPE: 4 3 2 / 2 3 4.\nDiagnosis: Generalised periodontitis stage III, grade B, currently unstable.',at:Date.now()}])));
     await pg.reload();await pg.waitForTimeout(500);

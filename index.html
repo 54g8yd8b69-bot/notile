@@ -1497,12 +1497,471 @@ DISC.obt={after:'Visit',f:[
     I('Implants','Implants (including zygomatic implants) may improve retention in future, where suitable.'),
     I('Radiotherapy','After radiotherapy, sore areas heal slowly and extractions carry a risk of osteoradionecrosis.',{rel:s=>s.rt&&s.rt!=='None',sug:s=>s.rt&&s.rt!=='None'})]),
   ...OUTCOME]};
+// ---------- more discussion tiles (Kiroku-style sentences) ----------
+// Extra tappable points for every template: procedure explained, benefits, more risks,
+// understanding and questions. Each tile writes one full sentence into the note.
+const dMore=(tid,fields)=>{const a=DISC[tid].f,i=a.findIndex(f=>f.id==='pq');a.splice(i<0?a.length:i,0,...fields)};
+const dItems=(tid,did,items)=>DISC[tid].f.find(f=>f.id===did).items.push(...items);
+const STOP=I('Stop signal','Agreed that the patient can raise a hand to stop at any time.');
+const isPrep=s=>/prep/i.test(s.proc||''),isFit=s=>/fit/i.test(s.proc||''),isRBB=s=>/Resin bonded/.test(s.proc||''),isBr=s=>/bridge/i.test(s.proc||'');
+const dPart=s=>(s.arch||[]).some(a=>/partial/.test(a)),dStage=re=>s=>re.test(s.stage||'');
+const isRSD=s=>has(s,'txtype','Root surface debridement');
+
+// --- New patient / review
+dItems('exam','dexp',[
+  I('Diagnoses','Diagnoses explained to the patient in plain language.'),
+  I('Periodontal diagnosis',s=>{const r=perioCalc(s);return `Periodontal diagnosis explained${r.text?` (${r.text})`:''}: a long-term condition that can be controlled with daily plaque control and regular supportive care, but not cured.`},{rel:s=>s.pdtype==='Periodontitis',sug:s=>s.pdtype==='Periodontitis'}),
+  I('Gingivitis','Gingivitis explained as reversible with effective daily plaque removal.',{rel:s=>s.pdtype==='Gingivitis',sug:s=>s.pdtype==='Gingivitis'}),
+  I('Mouth cancer check','Soft tissue examination explained as a routine mouth cancer check; advised to report any ulcer, lump, or red or white patch lasting more than three weeks.'),
+  I('Tooth wear','Tooth wear and its likely causes (acid, grinding, abrasion) explained.'),
+  I('Teeth of poor prognosis','Teeth with a poor or uncertain outlook identified and explained.'),
+  I('Discharge to GDP','Explained that after this course of hospital care the patient will be discharged to their own dentist for ongoing care.',{sug:s=>s.disp==='Discharged to GDP with letter'}),
+  I('Attendance policy','Hospital attendance policy explained, including discharge after missed appointments.')]);
+dMore('exam',[D('dplan','Treatment plan discussed',[
+  I('Plan agreed','Proposed treatment plan and its order explained and agreed with the patient.',{sug:s=>!!(s.tp||'').trim()}),
+  I('Alternatives','Alternative options for each stage, including no treatment, discussed with their risks and benefits.'),
+  I('Stabilise first','Explained that gum health and decay need to be stabilised before any advanced restorative treatment.'),
+  I('Patient priorities','Patient’s own concerns and priorities asked about and taken into account.'),
+  I('Visits and time','Likely number of visits and time involved explained.'),
+  I('Patient’s role','Explained that the outcome depends on the patient’s home care and attendance.'),
+  I('Plan may change','Explained that the plan may change as treatment progresses and teeth are reassessed.'),
+  I('Treatment by trainees','Explained that treatment in the dental hospital may be provided by supervised trainees or students.')])]);
+
+// --- Unscheduled care
+dItems('emerg','drisk',[
+  I('Tooth may not be saveable',s=>`${tn(s)==='the tooth'?'The tooth':tn(s)} may prove unrestorable and need extraction.`),
+  I('Flare-up','Pain or swelling can flare up after emergency treatment before it settles.'),
+  I('Antibiotic side effects','Antibiotic side effects (stomach upset, rash, allergy) and interactions explained.',{rel:s=>/Prescribed/.test(s.abx||''),sug:s=>/Prescribed/.test(s.abx||'')}),
+  I('Dressing loss','The temporary dressing may wear or come out; the tooth should be re-sealed promptly if so.',{rel:s=>has(s,'tx','Temporary dressing')||!!s.temp})]);
+dMore('emerg',[D('dexpect','What to expect',[
+  I('Relief takes time','Explained that symptoms should ease over the next 24–48 hours but may not settle at once.',{sug:()=>true}),
+  I('Emergency care only','Explained that this clinic provides emergency care only, and definitive treatment needs arranging.'),
+  I('Follow-up with GDP','Advised to arrange follow-up with their own dentist as soon as possible.'),
+  I('No GDP','Advised how to register with a dentist for ongoing care.'),
+  I('Antibiotics alone do not cure','Explained that antibiotics do not treat the cause, and the tooth still needs treating.',{rel:s=>/Prescribed/.test(s.abx||''),sug:s=>/Prescribed/.test(s.abx||'')})])]);
+
+// --- Treatment
+dItems('treat','drisk',[
+  I('Bleeding gums','Gums may bleed for a day or two after cleaning.',{rel:s=>(s.txtype||[]).some(x=>/scale|debridement/i.test(x))}),
+  I('Controls, not cures','Periodontal treatment controls rather than cures gum disease and depends on daily home care; without it the disease is likely to progress.',{rel:isRSD,sug:isRSD}),
+  I('Further treatment','Further treatment may be needed depending on the response, which is checked at reassessment.'),
+  I('Tooth mobility','Teeth may feel looser for a short time after deep cleaning.',{rel:isRSD})]);
+dMore('treat',[D('dben','Benefits discussed',[
+  I('Health','Improves the health of the gums and teeth.'),
+  I('Stabilises disease','Stabilises disease before further treatment.'),
+  I('Relieves symptoms','Relieves symptoms.'),
+  I('Keeps teeth longer','Reduces the risk of losing teeth in the long term.',{rel:isRSD})])]);
+
+// --- Radiograph report (new Discussion section)
+DISC.radrep={after:'Conclusion',f:[
+  D('dexp','Discussed with patient',[
+    I('Justification','Reason for the radiograph and the small radiation dose explained before exposure.'),
+    I('Findings explained','Radiographic findings shown and explained to the patient.',{sug:s=>has(s,'ract','Findings discussed with patient')}),
+    I('No abnormality','Explained that no abnormality was seen.'),
+    I('Further imaging','Need for further radiographs explained.',{sug:s=>has(s,'ract','Further radiographs needed')}),
+    I('CBCT','CBCT explained: a 3D scan with a higher dose than standard radiographs, justified by the extra information needed.',{sug:s=>has(s,'ract','CBCT referral')}),
+    I('Incidental finding','Incidental finding explained, with the plan to follow it up.'),
+    I('Effect on treatment','Explained how the findings affect the treatment options.')]),
+  X('pq','Patient questions',{ph:'questions asked and how they were answered'})]};
+
+// --- Trauma assessment (new Discussion section)
+DISC.trauma={after:'Diagnosis and plan',f:[
+  D('dexp','Explained',[
+    I('Injuries explained','Injuries and diagnosis explained to the patient, and to the parent or carer where present.',{sug:()=>true}),
+    I('Treatment today','Today’s emergency treatment explained.'),
+    I('Splint','Splint explained: how long it stays on, and that it is removed at a later visit.',{rel:s=>s.tsplint==='Yes',sug:s=>s.tsplint==='Yes'}),
+    I('Follow-up schedule','Follow-up schedule explained, with clinical and radiographic reviews in line with IADT guidance.',{sug:()=>true}),
+    I('Head injury advice','Advised to seek urgent medical review for any head injury symptoms (headache, vomiting, drowsiness, confusion).'),
+    I('Tetanus','Advised to check tetanus cover with their GP.'),
+    I('Missing fragment','Explained that a missing tooth fragment may be in the lip or have been swallowed or inhaled, and what is being done to check.')]),
+  D('drisk','Possible outcomes discussed',[
+    I('Loss of vitality','The nerve of an injured tooth may die, sometimes months or years later, and root canal treatment may then be needed.',{sug:()=>true}),
+    I('Discolouration','An injured tooth may darken.'),
+    I('Root resorption','The root may resorb, which can lead to loss of the tooth.'),
+    I('Ankylosis','A replanted or severely displaced tooth may fuse to the bone and, in a growing patient, sit lower than its neighbours over time.'),
+    I('Canal narrowing','The root canal may narrow and calcify, usually without symptoms.'),
+    I('Root development','In a young patient the injury can stop the root developing; this is monitored.'),
+    I('Restoration failure','The repair may chip or come off and need redoing.'),
+    I('Tooth loss','The tooth may be lost despite treatment; replacement options would then be discussed.'),
+    I('Guarded prognosis','Long-term outlook is guarded and depends on healing.')]),
+  D('dadv','Advice given',[
+    I('Soft diet','Soft diet for up to two weeks, avoiding biting on the injured teeth.',{sug:()=>true}),
+    I('Oral hygiene','Brush with a soft toothbrush after every meal to keep the area clean.',{sug:()=>true}),
+    I('Chlorhexidine','Chlorhexidine mouthwash twice daily for one to two weeks.'),
+    I('Analgesia','Analgesia advice given.'),
+    I('Contact sport','Avoid contact sport while healing, and wear a mouthguard afterwards.'),
+    I('Signs to return','Return if there is increasing pain, swelling, a gum boil, the tooth darkens or loosens, or the splint breaks.',{sug:()=>true}),
+    I('Written advice','Written trauma advice given.')]),
+  ...OUTCOME]};
+
+// --- Direct restoration
+dMore('direct',[D('dproc','Procedure explained',[
+  I('Steps','Steps explained: local anaesthetic, isolation, removal of decay, then placing and shaping the restoration.',{sug:()=>true}),
+  I('Material choice',s=>`Choice of material${s.mat?` (${/^(Composite|Amalgam)$/.test(s.mat)?s.mat.toLowerCase():s.mat})`:''} explained, with its advantages and limitations.`),
+  I('Replacing a restoration','Explained why the existing restoration needs replacing.'),
+  I('Rubber dam','Rubber dam explained: a sheet that keeps the tooth dry and protects the airway.',{rel:s=>has(s,'iso','Rubber dam')}),
+  STOP])]);
+dItems('direct','drisk',[
+  I('Pulp exposure plan','If the nerve is exposed while removing decay, a pulp cap or root canal treatment may be needed; this was agreed in advance.',{sug:s=>/soft dentine/.test(s.cav||'')}),
+  I('High bite','The bite may feel high afterwards and need adjusting.'),
+  I('Food packing','Food may pack between the teeth if the contact is not tight; this can be corrected.',{rel:s=>has(s,'surf','M')||has(s,'surf','D')}),
+  I('Amalgam','Amalgam contains mercury bound in a stable alloy; it is avoided in pregnancy, breastfeeding and under-15s unless strictly necessary.',{rel:s=>s.mat==='Amalgam',sug:s=>s.mat==='Amalgam'})]);
+
+// --- Composite build-ups
+dMore('build',[
+  D('dproc','Procedure explained',[
+    I('Additive','Explained that composite is added to the teeth with little or no drilling, and can be adjusted or removed later.',{sug:()=>true}),
+    I('Mock-up','Wax-up or mock-up shown and the planned tooth shapes agreed.'),
+    I('Shade and shape agreed','Shade and tooth shape agreed with the patient before starting.'),
+    I('Long appointment','Explained that this is a long appointment and may need more than one visit.'),
+    I('Photographs','Consent given for clinical photographs for the record.'),
+    STOP]),
+  D('dben','Benefits discussed',[
+    I('Appearance','Improves the shape and appearance of the teeth.'),
+    I('Protects worn teeth','Protects worn tooth surfaces from further wear and sensitivity.',{rel:s=>s.bind==='Toothwear',sug:s=>s.bind==='Toothwear'}),
+    I('Conservative','Keeps more tooth than veneers or crowns.'),
+    I('Reversible','Can be adjusted, repaired or removed in future.')])]);
+dItems('build','drisk',[
+  I('Gum health','Margins near the gum need careful cleaning to avoid inflammation.'),
+  I('Sensitivity','Short-term sensitivity afterwards.'),
+  I('Grinding','Grinding or clenching raises the risk of chipping; a night guard may be advised.')]);
+
+// --- Indirect (prep / fit)
+dMore('indirect',[
+  D('dproc','Procedure explained',[
+    I('Two visits','Two-visit process explained: preparation with an impression or scan today, and fit at a later visit.',{rel:isPrep,sug:isPrep}),
+    I('Fit visit','Today’s visit explained: try-in, checks of fit, contacts, bite and appearance, then cementation.',{rel:isFit,sug:isFit}),
+    I('Material',s=>`Material options explained${s.mat2?`; ${/^PFM/.test(s.mat2)?s.mat2:s.mat2.charAt(0).toLowerCase()+s.mat2.slice(1)} chosen`:''}.`),
+    I('Shade agreed','Shade chosen with the patient.',{rel:isPrep}),
+    I('Appearance approved','Patient shown the restoration at try-in and approved the appearance before cementation.',{rel:isFit,sug:isFit}),
+    I('RBB design','Bridge design explained: a wing bonded to the back of the supporting tooth, which may look slightly grey.',{rel:isRBB}),
+    STOP]),
+  D('dben','Benefits discussed',[
+    I('Protects the tooth','Protects the remaining tooth against fracture.',{rel:s=>/Crown|Onlay/.test(s.proc||'')}),
+    I('Fixed replacement','Replaces the missing tooth with something fixed rather than removable.',{rel:isBr}),
+    I('Function','Restores chewing and the bite.'),
+    I('Appearance','Improves appearance.'),
+    I('Seals a root-filled tooth','Seals and protects a root-filled tooth.',{rel:s=>/Crown|Onlay/.test(s.proc||'')})])]);
+dItems('indirect','drisk',[
+  I('Decay at margins','Decay can develop at the edges of the restoration if cleaning is poor.'),
+  I('RBB debond plan','If the bridge debonds it can usually be re-bonded: keep it safe and get in touch.',{rel:isRBB,sug:isRBB}),
+  I('Partial debond','If one end of a bridge comes loose without being noticed, decay can develop under it.',{rel:s=>/Conventional/.test(s.proc||'')}),
+  I('Opposing wear','Ceramic can wear the opposing teeth.'),
+  I('Root-filled tooth','Root-filled teeth carry a higher risk of fracture and failure under a crown.',{rel:s=>/Crown|Onlay/.test(s.proc||'')}),
+  I('Bite change','The bite may feel different and need adjusting.',{rel:isFit})]);
+
+// --- RBB try-in (new Discussion section)
+DISC.rbbtry={after:'Try-in',f:[
+  D('dexp','Discussed',[
+    I('Purpose','Purpose of the try-in explained: checking fit, shade, shape and bite before the bridge is bonded.',{sug:()=>true}),
+    I('Shown in mirror','Patient shown the bridge in place in a mirror.',{sug:()=>true}),
+    I('Appearance approved','Patient happy with the shade, shape and appearance.',{sug:s=>s.tout==='Accepted, proceed to fit'}),
+    I('Changes requested','Patient asked for changes; see problem list.',{sug:s=>!!s.tout&&s.tout!=='Accepted, proceed to fit'}),
+    I('Grey show-through','Possible greying of the supporting tooth from the wing explained.'),
+    I('Bite on the wing','Explained that the bite on the wing may feel different at first.'),
+    I('Next visit','Next visit explained: bonding the bridge under isolation.'),
+    I('Debond risk','Reminded that resin bonded bridges can debond and can usually be re-bonded.')]),
+  X('pq','Patient questions',{ph:'questions asked and how they were answered'})]};
+
+// --- Bonded retainer fit
+dMore('fbr',[D('dben','Benefits discussed',[
+  I('Always working','Holds the teeth without relying on remembering to wear a retainer.'),
+  I('Not visible','Not visible from the front.'),
+  I('Holds alignment','Holds the front teeth in their corrected position.')])]);
+dItems('fbr','drisk',[
+  I('Flossing','Normal flossing is not possible under the wire, so other cleaning aids are needed.'),
+  I('Not a guarantee','Some minor movement can still occur, especially of teeth not attached to the wire.')]);
+
+// --- Endodontics
+dMore('endo',[
+  D('dproc','Procedure explained',[
+    I('Steps','Steps explained: local anaesthetic, rubber dam, cleaning and shaping of the canals, then root filling and a sealed restoration.',{sug:()=>true}),
+    I('Rubber dam','Rubber dam explained and why it is needed for safety and a clean field.'),
+    I('Radiographs','Radiographs during and after treatment explained.'),
+    I('Long appointment','Long appointments explained; a bite block can be used for comfort.'),
+    I('Between visits','Explained that the tooth is dressed and temporarily sealed between visits.',{rel:s=>s.visit!=='Single visit'&&s.visit!=='Obturation'}),
+    I('Restoration afterwards','Explained that the tooth needs a definitive restoration after root filling for treatment to succeed.'),
+    STOP]),
+  D('dben','Benefits discussed',[
+    I('Keeps the tooth','Keeps the natural tooth and avoids a gap.',{sug:()=>true}),
+    I('Removes infection','Removes infection and relieves pain.'),
+    I('Success rates','Success rates explained, including that they are lower for retreatment and for teeth with existing infection around the root.')])]);
+dItems('endo','drisk',[
+  I('Flare-up','Pain or swelling can flare up between visits and may need an extra visit.'),
+  I('Blocked or missed canals','Canals may be blocked, calcified or not found, which can affect the outcome.'),
+  I('Material beyond the root','Root filling material may extend slightly beyond the root tip, usually without problems.'),
+  I('Temporary loss','The temporary restoration may be lost between visits; the tooth should be re-sealed promptly if so.',{rel:s=>s.visit!=='Single visit'}),
+  I('Access through a crown','Access through an existing crown may damage it, and it may need replacing.'),
+  I('Old root filling','It may not be possible to remove all of the old root filling or a post.',{rel:s=>s.visit==='Retreatment',sug:s=>s.visit==='Retreatment'}),
+  I('Nerve proximity','Roots lie close to the nerve in the lower jaw; rarely, altered sensation can follow treatment.',{rel:lowerPost}),
+  I('Healing takes time','Symptoms may take time to settle, and healing is checked with a radiograph at one year.')]);
+
+// --- Post and core
+dMore('post',[
+  D('dproc','Procedure explained',[
+    I('Steps','Steps explained: removing part of the root filling, cementing a post, and building a core to hold the crown.',{sug:()=>true}),
+    I('Ferrule','Explained that success depends on having enough sound tooth above the gum.'),
+    I('Crown to follow','Explained that a crown is needed afterwards.'),
+    STOP]),
+  D('dben','Benefits discussed',[
+    I('Retains the core','Gives retention for the core and crown where little tooth remains.'),
+    I('Keeps the tooth','Allows the tooth to be kept rather than extracted.')])]);
+dItems('post','drisk',[
+  I('Guarded prognosis','Teeth that need posts have a more guarded long-term outlook.',{sug:()=>true}),
+  I('Crown lengthening','Crown lengthening or orthodontic extrusion may be needed if there is too little tooth above the gum.')]);
+
+// --- Extraction
+dMore('xla',[
+  D('dproc','Procedure explained',[
+    I('Steps','Steps explained: local anaesthetic, then loosening and removing the tooth; pressure and noise will be felt, but not pain.',{sug:()=>true}),
+    I('Surgical approach','Surgical approach explained: a gum flap, removal of bone or sectioning of the tooth, and stitches.',{rel:s=>/Surgical/.test(s.tech||''),sug:s=>/Surgical/.test(s.tech||'')}),
+    I('Correct tooth confirmed',s=>`Tooth for extraction${teeth(s).length?` (${tn(s)})`:''} confirmed with the patient.`,{sug:()=>true}),
+    I('Radiograph reviewed','Pre-operative radiograph reviewed with the patient.'),
+    I('Getting home','Arrangements for getting home checked.'),
+    STOP]),
+  D('dben','Benefits discussed',[
+    I('Removes pain and infection','Removes the source of pain and infection.'),
+    I('Prevents further problems','Prevents further infection or damage to neighbouring teeth.'),
+    I('Allows planned treatment','Allows the planned denture, bridge, implant or orthodontic treatment to go ahead.')])]);
+dItems('xla','drisk',[
+  I('Bone loss','The bone and gum shrink after extraction, which can affect later replacement options.'),
+  I('Gap effects','Leaving a gap can let neighbouring teeth tilt and the opposing tooth over-erupt.',{rel:s=>!tAny(s,(u,_,n)=>n===8)}),
+  I('Slow healing','Healing can be slower with smoking, diabetes or some medicines.'),
+  I('Jaw joint','Jaw joint discomfort after a long or difficult extraction.'),
+  I('Displacement','Rarely, a root or tooth can be displaced into the sinus or soft tissues.',{rel:upperMolar}),
+  I('Jaw fracture','Very rarely, fracture of the lower jaw.',{rel:lower8}),
+  I('Osteoradionecrosis','Risk of osteoradionecrosis after radiotherapy to the jaws.')]);
+
+// --- Dentures
+dMore('denture',[
+  D('dproc','Procedure explained',[
+    I('Stages','Stages of making the denture explained: primary and secondary impressions, jaw registration, try-in and fit.',{rel:dStage(/impressions|registration|try-in/i)}),
+    I('Today’s stage','Today’s stage explained.',{sug:()=>true}),
+    I('Design','Denture design explained, including clasps and rests and where metal may show.',{rel:dPart}),
+    I('Tooth preparation','Small adjustments to teeth (rest seats, guide planes) explained and agreed.',{rel:dPart}),
+    I('Shade and mould','Tooth shade and shape chosen with the patient.',{rel:dStage(/registration|try-in/i)}),
+    I('Try-in approved','Patient viewed the try-in in a mirror and approved the appearance before finish.',{rel:dStage(/Wax try-in/),sug:dStage(/Wax try-in/)}),
+    I('Changes requested','Patient asked for changes at try-in; see adjustments.',{rel:dStage(/try-in/i)})]),
+  D('dben','Benefits discussed',[
+    I('Appearance','Improves appearance and supports the lips and cheeks.'),
+    I('Chewing','Improves chewing.'),
+    I('Speech','Helps speech.'),
+    I('Stops drifting','Stops teeth drifting into the spaces.',{rel:dPart})])]);
+dItems('denture','drisk',[
+  I('Chewing efficiency','Dentures do not chew as well as natural teeth, and some foods will stay difficult.'),
+  I('Palate coverage','Covering the palate can affect taste and, at first, cause gagging.',{rel:s=>(s.arch||[]).some(a=>/Upper/.test(a))}),
+  I('Saliva','More saliva at first, settling within a few weeks.',{rel:dStage(/fit/i)}),
+  I('Clasps show','Clasps may be visible when smiling.',{rel:dPart}),
+  I('Replacement dentures','Replacement dentures feel different from the old set and take time to adapt to.'),
+  I('Immediate denture','Immediate dentures loosen as the gums heal and need relining or remaking, usually within a year.')]);
+
+// --- VFR fit
+dMore('vfr',[D('dben','Benefits discussed',[
+  I('Appearance','Fills the gap for appearance.'),
+  I('No preparation','Needs no preparation of the teeth.'),
+  I('Holds space','Holds the teeth in position while definitive treatment is planned.')])]);
+
+// --- Implant prosthetics
+dMore('implant',[
+  D('dproc','Procedure explained',[
+    I('Stages','Restorative stages explained: impressions or scan, try-in where needed, then fit.'),
+    I('Today’s stage','Today’s stage explained.',{sug:()=>true}),
+    I('Healing abutment','Explained that the healing cap is removed and replaced during the visit, which may pinch the gum briefly.',{rel:s=>!isOD(s)}),
+    I('Radiograph','Radiograph to check seating explained.'),
+    I('Torque and access','Explained that the screw is tightened to a set torque and the access hole sealed.',{rel:dStage(/fit/i)}),
+    I('Appearance approved','Patient shown the restoration and approved the appearance before final fit.',{rel:dStage(/fit/i),sug:dStage(/definitive crown fit/)})]),
+  D('dben','Benefits discussed',[
+    I('No tooth preparation','Replaces the missing tooth without preparing neighbouring teeth.',{rel:s=>!isOD(s)}),
+    I('Function and appearance','Restores chewing and appearance.'),
+    I('Retention','Improves denture retention, stability and confidence when eating and speaking.',{rel:isOD,sug:isOD})])]);
+dItems('implant','drisk',[
+  I('Implant failure','An implant can lose its bone support and fail, even after years.'),
+  I('Open contacts','Contacts can open next to implant crowns as natural teeth drift, causing food trapping.',{rel:s=>!isOD(s)}),
+  I('Grinding','Grinding or clenching raises the risk of chipping and screw problems; a night guard may be advised.'),
+  I('Gum soreness','The gum may be sore or blanched for a short time after fit.',{rel:dStage(/fit/i)})]);
+
+// --- Obturator
+dMore('obt',[
+  D('dben','Benefits discussed',[
+    I('Seal','Separates the mouth from the nose and sinus to improve speech, swallowing and eating.',{sug:()=>true}),
+    I('Appearance','Replaces missing teeth and supports the face.'),
+    I('Defect can be checked','Can be removed so the defect can be checked.')]),
+  D('drisk','Difficulties discussed',[
+    I('Retention','Retention can be difficult with few teeth and a large defect.'),
+    I('Leakage','Some leakage of fluid or air may remain.'),
+    I('Limited opening','Limited mouth opening can make insertion difficult; jaw exercises advised.'),
+    I('Soreness','Sore areas are common and need adjusting.'),
+    I('Bulk and weight','It may feel bulky or heavy at first.'),
+    I('Remakes','The obturator will need replacing as the tissues change.')])]);
+
+// --- every template: understanding and questions
+Object.keys(DISC).forEach(tid=>dMore(tid,[D('dund','Understanding and questions',[
+  I('Chance to ask questions','Patient given the opportunity to ask questions, and these were answered.',{sug:()=>true}),
+  I('Understanding checked','Understanding checked by asking the patient to explain the plan in their own words.'),
+  I('Written information','Written information given to take away.'),
+  I('Time to decide','Explained that there is no need to decide today.'),
+  I('Escort present','Discussion held with the patient’s escort present, with the patient’s agreement.',{rel:s=>has(s,'pid','Accompanied by escort')}),
+  I('Interpreter','Discussion carried out through an interpreter.',{rel:s=>has(s,'pid','Interpreter used'),sug:s=>has(s,'pid','Interpreter used')}),
+  I('Communication support','Communication adapted to the patient’s needs (hearing, sight, learning disability or anxiety).')])]));
+
 // insert each Discussion section and drop the old consent chips from other sections
 T.forEach(t=>{const d=DISC[t.id];if(!d)return;
   t.sections.forEach(sec=>{sec.f=sec.f.filter(f=>f.id!=='consent')});
   const i=t.sections.findIndex(x=>x.t===d.after);t.sections.splice(i+1,0,{t:'Discussion',f:d.f});
   t.sections=t.sections.filter(sec=>sec.f.length);
 });
+
+// ---------- advice and consent tiles written out as sentences ----------
+// SENT maps a tile's label to the sentence it writes in the note. Tiles without an entry (e.g. ones
+// added in Adjust template) are written as their label.
+const SENT={
+'Options, risks and benefits discussed':'Treatment options, including no treatment, were discussed with their risks and benefits.',
+'Verbal consent obtained':'Verbal consent obtained to proceed.',
+'Written consent form signed':'Written consent form completed and signed.',
+'Consent form copy given to patient':'Copy of the consent form given to the patient.',
+'Patient given time to consider':'Patient given time to consider the options before deciding.',
+'Capacity assessed':'Capacity assessed: the patient was able to understand, retain and weigh the information and to communicate a decision.',
+'Consent by person with legal authority (welfare attorney / guardian)':'Consent given by a person with legal authority (welfare attorney or guardian).',
+'Numbness advice':'Advised to avoid eating, hot drinks and biting the lip, cheek or tongue until the numbness has worn off.',
+'Sensitivity may occur':'Advised that the tooth may be sensitive to hot, cold or biting for a few days to weeks, and to return if this worsens or does not settle.',
+'Contact practice if pain or high bite':'Advised to get in touch if there is pain, or if the bite feels high or uneven once the numbness has gone.',
+'Analgesia advice':'Analgesia advice given: paracetamol and/or ibuprofen as needed if safe for the patient, following the packet instructions.',
+'Post-op instructions given':'Post-operative instructions given.',
+'Home care reinforced':'Home care reinforced: toothbrushing twice daily with fluoride toothpaste and daily interdental cleaning.',
+'Hospital emergency contact number given':'Hospital emergency contact number given, with advice on what to do out of hours.',
+'Return if swelling increases or difficulty swallowing/breathing':'Advised to return urgently, or attend A&E, if swelling increases or spreads, or if there is fever or difficulty swallowing, breathing or opening the mouth.',
+'Seek urgent care out of hours (NHS 24 / 111)':'Advised to call NHS 24 on 111 for urgent dental problems out of hours.',
+'Antibiotic instructions':'Antibiotic instructions given: complete the course as prescribed, and stop and seek help if there is a rash, swelling or difficulty breathing.',
+'Temporary dressing advice':'Advised that the dressing is temporary, to avoid chewing hard food on it, and to arrange definitive treatment.',
+'Tender gums after cleaning':'Advised that the teeth and gums may be tender or sensitive for a few days after cleaning, and that a desensitising toothpaste can help.',
+'Composite is fully set':'Explained that the composite is fully set and can be chewed on once the numbness has gone.',
+'Avoid chewing on amalgam for 24 hours':'Advised to avoid chewing on the new amalgam restoration for 24 hours while it reaches full strength.',
+'Clean around the restoration':'Advised to clean around the new restoration, including between the teeth.',
+'Prevention advice':'Diet and fluoride advice given to reduce the risk of further decay.',
+'Avoid staining food and drink for 48 hours':'Advised to avoid strongly coloured food and drink (tea, coffee, red wine, curry) and smoking for 48 hours.',
+'Avoid biting hard objects with the build-ups':'Advised not to bite hard objects or foods (nails, pens, ice, crusty bread) with the built-up teeth.',
+'Night guard advised':'A night guard was advised to protect the build-ups from grinding.',
+'Posterior teeth expected to re-establish contact over weeks to months':'Explained that the back teeth are out of contact for now and are expected to come back together over weeks to months; softer food may be easier at first.',
+'Contact if anything chips or feels high':'Advised to get in touch if anything chips, feels rough or feels high on biting.',
+'Temporary care advice':'Temporary restoration: advised to avoid sticky or hard foods on that side, to pull floss out sideways, and to get in touch if it comes loose or breaks.',
+'Superfloss / interdental cleaning shown':'Cleaning around and under the restoration shown with superfloss or interdental brushes.',
+'Shown how to clean around the wire':'Shown how to clean around the wire and composite, brushing above and below it.',
+'Superfloss / floss threader demonstrated':'Superfloss or a floss threader demonstrated for cleaning under the wire.',
+'Interdental brushes advised':'Interdental brushes advised for the spaces under the wire.',
+'Avoid biting hard food with the front teeth':'Advised to avoid biting into hard foods with the front teeth and to cut them up instead.',
+'Check the wire with tongue each day':'Advised to check the wire each day with the tongue or a finger for anything loose or sharp.',
+'Return promptly if the wire breaks or comes loose':'Advised to return promptly if the wire breaks or comes loose from any tooth, as the teeth can move quickly.',
+'Retention is long term':'Explained that retention is long term: teeth can move throughout life if the retainer is lost.',
+'Retainer to be checked at every dental visit':'Advised to ask for the retainer to be checked at every dental visit.',
+'Tenderness to biting may occur':'Advised that the tooth may be tender to bite on for a few days, which usually settles.',
+'Avoid chewing on tooth until restored':'Advised to avoid chewing on the tooth until it has its definitive restoration, as it is at risk of fracture.',
+'Cuspal coverage advised':'Advised that a cuspal coverage restoration (onlay or crown) is needed to protect the tooth from fracture.',
+'Temporary restoration advice':'Advised that the temporary restoration may wear or feel slightly rough, and to get in touch if it comes out, as the tooth needs to stay sealed.',
+'Flare-up advice':'Advised that a small number of teeth flare up with pain or swelling after treatment, and to get in touch if this happens.',
+'Avoid heavy biting until the crown is fitted':'Advised to avoid heavy biting on the tooth until the definitive crown is fitted.',
+'Crown needed':'Explained that a crown is needed to protect the post, core and remaining tooth.',
+'Verbal and written post-op instructions':'Verbal and written post-operative instructions given.',
+'Bite on gauze 20–30 min':'Advised to bite firmly on the gauze for 20–30 minutes.',
+'No rinsing 24 h':'Advised not to rinse, spit or disturb the socket for 24 hours.',
+'Warm salt water mouthwash from tomorrow':'Advised to use warm salt water mouthwashes from tomorrow, after meals, for about a week.',
+'Avoid smoking':'Advised to avoid smoking for as long as possible, and for at least 48 hours, as it raises the risk of dry socket.',
+'Bleeding management advice':'If the socket bleeds: advised to bite firmly on a clean damp gauze or cloth for 20 minutes while sitting upright, and to seek help if it does not stop.',
+'Rest today':'Advised to rest, to avoid strenuous exercise and alcohol for the rest of the day, and to eat soft food on the other side.',
+'Resorbable sutures explained':'Explained that the stitches are resorbable and will come away on their own in one to two weeks.',
+'Sinus precautions':'Sinus precautions given: avoid nose blowing, sneeze with the mouth open, and avoid straws and smoking for two weeks.',
+'When to get in touch':'Advised to get in touch if there is increasing pain after 2–3 days, spreading swelling, fever, bleeding that will not stop, or numbness that does not wear off.',
+'Denture care and advice leaflet given':'Denture care and advice leaflet given.',
+'Remove at night':'Advised to leave the dentures out at night to rest the gums.',
+'Cleaning advice':'Advised to clean the dentures daily over a bowl of water with a soft brush and a non-abrasive cleaner (not toothpaste).',
+'Return if sore spots':'Advised to return if sore spots develop, wearing the denture for a few hours beforehand so the area can be seen.',
+'Eating advice':'Advised to start with soft food cut small, chewing on both sides, and to build up gradually.',
+'Speech practice':'Advised that speech improves with practice, such as reading aloud.',
+'Denture fixative discussed':'Use of denture fixative discussed.',
+'Clean the remaining teeth':'Advised to clean the remaining teeth and gums thoroughly, especially around the teeth the denture rests on.',
+'Insertion and removal shown':'Insertion and removal shown.',
+'Patient able to insert and remove':'Patient was able to insert and remove it unaided.',
+'Clean with a soft brush and cold water':'Advised to clean it with a soft brush and cold water (not toothpaste).',
+'Avoid hot water':'Advised to avoid hot water, which distorts the retainer.',
+'Store in case when out':'Advised to store it in its case whenever it is out of the mouth.',
+'Not to eat hard or sticky food with it in':'Advised not to eat hard or sticky food with it in.',
+'Return if cracked, loose or sore':'Advised to return if it cracks, becomes loose or causes soreness.',
+'Interdental brush / superfloss shown':'Cleaning around the implant shown with interdental brushes or superfloss.',
+'Maintenance and review explained':'Explained that implants need daily cleaning and regular reviews, with radiographs when indicated, to keep the surrounding gum and bone healthy.',
+'Screw access explained':'Explained that the crown is held by a screw under a filling in the biting surface, which may need replacing or tightening over time.',
+'Return if the crown feels loose':'Advised to return promptly if the crown feels loose, as a loose screw can damage the implant.',
+'Remove at night and clean the attachments':'Advised to remove the overdenture at night and to clean around the attachments and inside the housings daily.',
+'Inserts wear and will need changing':'Explained that the retention inserts wear and will need changing periodically.',
+'Regular implant reviews':'Explained the need for regular implant reviews.',
+'Return if the denture becomes loose or sore':'Advised to return if the denture becomes loose or sore.',
+'Clean obturator daily, brush and soak':'Advised to clean the obturator daily with a brush and to soak it as directed.',
+'Clean the defect with saline or sodium bicarbonate rinses':'Advised to clean the defect with saline or sodium bicarbonate rinses.',
+'Wear continuously in the early weeks; the defect contracts if left out':'Advised to wear the obturator continuously in the early weeks, as the defect contracts if it is left out.',
+'Return if sore, loose or leaking':'Advised to return if it is sore, loose or leaking.',
+'Speech and language therapy referral discussed':'Referral to speech and language therapy discussed.',
+'TB technique':'Toothbrushing technique shown: twice daily for two minutes, last thing at night and on one other occasion.',
+'Interdental cleaning':'Daily interdental cleaning advised and shown, with interdental brushes sized to the spaces, or floss where they do not fit.',
+'1450 ppm F toothpaste, spit don’t rinse':'Advised to use fluoride toothpaste (1,450 ppm) and to spit out after brushing without rinsing.',
+'5000 ppm F toothpaste prescribed':'High-fluoride toothpaste (5,000 ppm) prescribed, with instructions for use.',
+'Duraphat varnish 22,600 ppm applied':'Fluoride varnish (Duraphat, 22,600 ppm) applied, with aftercare advice.',
+'Diet advice':'Diet advice given: reduce the amount and frequency of sugary food and drink, keep them to mealtimes, and avoid them before bed.',
+'Smoking cessation advice':'Smoking cessation: very brief advice given and referral to stop smoking services offered.',
+'Alcohol advice':'Alcohol advice given: keep within 14 units a week, spread over several days.',
+'Powered toothbrush advised':'Powered toothbrush with an oscillating or sonic head advised.',
+'Fluoride mouthwash advised':'Fluoride mouthwash (0.05%) advised daily, at a different time from brushing.',
+'Dry mouth advice':'Dry mouth advice given: frequent sips of water, sugar-free gum, and saliva substitutes if needed.',
+'Tooth wear advice':'Tooth wear advice given: limit acidic food and drink, and avoid brushing straight after acids or reflux.',
+'Denture hygiene advice':'Denture hygiene advice given: clean daily and leave out at night.',
+'Restores function':'Restores the shape and function of the tooth.',
+'Stops decay progressing':'Removes decay and stops it progressing towards the nerve.',
+'Improves appearance':'Improves the appearance of the tooth.',
+'Relieves sensitivity':'Relieves sensitivity.',
+'Reduces food trapping':'Reduces food trapping.'};
+const sentOf=(o,s)=>{const t=SENT[o];return t?(typeof t==='function'?t(s):t):o};
+const SENTF=['consent','poi','adv','fadv','vadv','dadv','iadv','odadv','oadv','ohi','dben'];
+T.forEach(t=>t.sections.forEach(sec=>sec.f.forEach(f=>{if(f.type==='multi'&&SENTF.includes(f.id))f.sent=true})));
+{const tsec=(tid,title)=>T.find(t=>t.id===tid).sections.find(x=>x.t===title);
+ const tfield=(tid,fid)=>T.find(t=>t.id===tid).sections.flatMap(x=>x.f).find(f=>f.id===fid);
+ const optMore=(tid,fid,opts)=>{const f=tfield(tid,fid);opts.forEach(o=>{if(!f.options.includes(o))f.options.push(o)})};
+ const endMore=(tid,title,fields,before='next')=>{const a=tsec(tid,title).f,i=a.findIndex(f=>f.id===before);a.splice(i<0?a.length:i,0,...fields)};
+ // more advice tiles
+ optMore('exam','ohi',['Powered toothbrush advised','Fluoride mouthwash advised','Dry mouth advice','Tooth wear advice','Denture hygiene advice']);
+ optMore('emerg','adv',['Numbness advice','Temporary dressing advice','Antibiotic instructions','Hospital emergency contact number given']);
+ optMore('treat','poi',['Numbness advice','Tender gums after cleaning']);
+ optMore('direct','poi',['Composite is fully set','Avoid chewing on amalgam for 24 hours','Clean around the restoration','Prevention advice']);
+ optMore('direct','dben',['Reduces food trapping']);
+ optMore('endo','poi',['Numbness advice','Temporary restoration advice','Flare-up advice','Hospital emergency contact number given']);
+ optMore('xla','poi',['Numbness advice','Rest today','Resorbable sutures explained','Sinus precautions','When to get in touch']);
+ optMore('denture','dadv',['Insertion and removal shown','Eating advice','Speech practice','Clean the remaining teeth','Denture fixative discussed']);
+ optMore('implant','iadv',['Screw access explained','Return if the crown feels loose','Numbness advice']);
+ endMore('post','Finish',[Object.assign(POSTOP(['Numbness advice','Avoid heavy biting until the crown is fitted','Crown needed','Contact practice if pain or high bite'],['Numbness advice']),{sent:true})]);
+ // end-of-visit tiles
+ const E={
+  tol:I('Tolerated well','Patient tolerated the procedure well.'),
+  comp:I('No complications','No complications during the procedure.'),
+  mirror:I('Happy with the result','Patient shown the result in a mirror and is happy with it.'),
+  bite:I('Bite comfortable','Patient reports that the bite feels comfortable.'),
+  fit:I('Comfortable fit','Patient reports that it feels comfortable and secure.'),
+  rel:I('Symptoms relieved','Patient reports that symptoms have eased.'),
+  nextv:I('Next visit explained','Plan for the next visit explained.'),
+  contact:I('Knows how to get in touch','Patient knows how to get in touch if there are problems.'),
+  left:I('Left well','Patient left the clinic well.')};
+ const END=(...k)=>[D('dend','End of visit',k.map(x=>E[x]))];
+ endMore('emerg','Treatment',END('tol','comp','rel','contact','left'),'fu');
+ endMore('treat','Post-op',END('nextv','contact','left'));
+ endMore('direct','Finish',END('tol','comp','mirror','bite','contact','left'));
+ endMore('build','Finish',END('tol','comp','mirror','bite','nextv','contact','left'));
+ endMore('indirect','Finish',END('tol','comp','mirror','bite','nextv','contact','left'));
+ endMore('rbbtry','Outcome',END('nextv','left'));
+ endMore('fbr','Advice',END('tol','comp','fit','contact','left'));
+ endMore('endo','Dressing / obturation',END('tol','comp','nextv','contact','left'));
+ endMore('post','Finish',END('tol','comp','bite','nextv','contact','left'));
+ endMore('xla','Post-op',END('tol','comp','contact'),'dis');
+ endMore('denture','Lab',END('mirror','fit','nextv','contact','left'),'labi');
+ endMore('vfr','Advice',END('mirror','fit','nextv','contact','left'));
+ endMore('implant','Finish',END('tol','comp','mirror','bite','nextv','contact','left'));
+ endMore('obt','Advice',END('fit','nextv','contact','left'),'labi');
+ DISC.trauma.f.splice(DISC.trauma.f.findIndex(f=>f.id==='pq'),0,...END('tol','nextv','contact','left'));
+}
 
 
 // ---------- hospital additions ----------
@@ -1706,14 +2165,14 @@ function otherBox(f,s){const id=`${cur.id}-${f.id}__o`;return `<input type="text
 const other=(f,s)=>(s[f.id+'__o']||'').trim();
 function val(f,s){const base=val0(f,s),o=other(f,s);
   if(!o||f.type==='info')return base;
-  if(f.type==='disc'||f.type==='tmap')return base?`${base}\n– ${o}`:`– ${o}`;
+  if(f.type==='disc'||f.type==='tmap'||f.sent)return base?`${base}\n– ${o}`:`– ${o}`;
   if(f.type==='multi')return base?`${base}, ${o}`:o;
   return base?`${base}; ${o}`:o;
 }
 function val0(f,s){
   if(f.noteFn)return f.noteFn(s);
   const v=s[f.id];
-  if(f.type==='multi'){const vv=Array.isArray(v)?v:(v?[v]:[]);if(!vv.length)return '';const a=f.fmt?vv.map(f.fmt):vv;return f.sentence?(a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a[0]):a.join(f.join??', ')}
+  if(f.type==='multi'){const vv=Array.isArray(v)?v:(v?[v]:[]);if(!vv.length)return '';if(f.sent)return vv.map(o=>`– ${sentOf(o,s)}`).join('\n');const a=f.fmt?vv.map(f.fmt):vv;return f.sentence?(a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a[0]):a.join(f.join??', ')}
   if(f.type==='cc') return ccNote(v);
   if(f.type==='tgrid'){const ts=tsort(s[f.teeth]||[]);return ts.map(t=>tgLine(t,(v||{})[t])).filter(Boolean).join('\n')}
   if(f.type==='teeth') return toothTxt(v);
@@ -1741,7 +2200,7 @@ function build(){
   if(CL.clinic)out.push(`Clinic: ${CL.clinic}`);
   out.push('');
   cur.sections.forEach(sec=>{
-    const lines=sec.f.filter(f=>(!f.when||f.when(s))&&(!f.noNote||other(f,s))).map(f=>{const v=f.type==='info'?f.note(s):f.noNote?other(f,s):val(f,s);return v?(f.sentence?`${f.nl||f.label} ${v}`:(f.list||['disc','wl','ff','implants','bridges','tfind','tmap','obtq','cbr','cc','tgrid'].includes(f.type))?`${f.label}:\n${v}`:`${f.label}: ${v}`):''}).filter(Boolean);
+    const lines=sec.f.filter(f=>(!f.when||f.when(s))&&(!f.noNote||other(f,s))).map(f=>{const v=f.type==='info'?f.note(s):f.noNote?other(f,s):val(f,s);return v?(f.sentence?`${f.nl||f.label} ${v}`:(f.list||f.sent||['disc','wl','ff','implants','bridges','tfind','tmap','obtq','cbr','cc','tgrid'].includes(f.type))?`${f.label}:\n${v}`:`${f.label}: ${v}`):''}).filter(Boolean);
     if(lines.length&&!(Array.isArray(s.__off)&&s.__off.includes(sec.t))){out.push(sec.t.toUpperCase(),...lines,'')}
   });
   const chl=chartNoteLines();if(chl.length)out.push('DENTAL CHARTING',...chl,'');
