@@ -297,6 +297,10 @@ input.oth:not(:placeholder-shown){border-style:solid;background:var(--bg)}
 .lblrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .dict{font:inherit;font-size:.8rem;font-weight:500;color:var(--teal);background:none;border:1px solid transparent;border-radius:8px;padding:2px 8px;min-height:28px;cursor:pointer;flex:none}
 .dict:hover,.dict:focus-visible{border-color:var(--teal2);background:var(--chipon,transparent)}
+[data-dict].rec{color:#fff;background:#B83A3A;border-color:#B83A3A;animation:vtpulse 1.4s infinite}
+[data-dict].busy{opacity:.75;cursor:progress}
+@keyframes vtpulse{0%{box-shadow:0 0 0 0 rgba(184,58,58,.5)}70%{box-shadow:0 0 0 8px rgba(184,58,58,0)}100%{box-shadow:0 0 0 0 rgba(184,58,58,0)}}
+@media (prefers-reduced-motion:reduce){[data-dict].rec{animation:none}}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .addsug{font:inherit;font-size:.82rem;font-weight:700;color:var(--head);background:transparent;border:1px solid var(--sug);border-radius:6px;padding:4px 10px;cursor:pointer}
 .chip[hidden]{display:none}
@@ -436,6 +440,7 @@ dialog.ccdlg[open]{display:flex;flex-direction:column}
       <div class="note-head">
         <strong>Note</strong>
         <div class="btns">
+          <button class="btn ghost" id="dictOut" data-dict="out" type="button" title="Dictate free text into the note">🎤 Dictate</button>
           <button class="btn ghost" id="reset" type="button">Reset</button>
           <button class="btn primary" id="copy" type="button">Copy note</button>
         </div>
@@ -2117,7 +2122,7 @@ function fieldHTML(f,s){
   const ph=f.ph?` placeholder="${esc(f.ph)}"`:'';
   const c=f.area?`<textarea id="${fid}" data-f="${f.id}"${ph}>${esc(v||'')}</textarea>`
     :`<input id="${fid}" data-f="${f.id}" type="${f.type==='num'?'number':'text'}" class="${f.short||f.type==='num'?'short':''}" value="${esc(v||'')}"${ph}${f.type==='num'?' min="0" step="0.5"':''}>`;
-  const dk=!f.short&&f.type!=='num'?`<button type="button" class="dict" data-dict="${fid}" title="${esc(DICT.how)}" aria-label="Dictate into ${esc(f.label)}: ${esc(DICT.how)}">🎤 Dictate</button>`:'';
+  const dk=!f.short&&f.type!=='num'?`<button type="button" class="dict" data-dict="${fid}" title="Dictate into this box. Speech is turned into text on this device." aria-label="Dictate into ${esc(f.label)}">🎤 Dictate</button>`:'';
   return `<div class="field" data-field="${f.id}"><div class="lblrow"><label class="lbl" for="${fid}">${f.label}</label>${dk}</div>${c}</div>`;
 }
 function sync(){
@@ -2465,9 +2470,65 @@ function copy(){
 $('copy').addEventListener('click',copy);$('copy2').addEventListener('click',copy);
 function copied(){['copy','copy2'].forEach(id=>{const b=$(id);b.classList.add('done');b.textContent='Copied ✓';clearTimeout(b._t);b._t=setTimeout(()=>{b.classList.remove('done');b.textContent='Copy note'},1500)})}
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||1800)}
-// dictation: the device's own voice typing, started by the user's shortcut (the page never records audio)
-document.addEventListener('click',e=>{const b=e.target.closest('[data-dict]');if(!b)return;e.preventDefault();e.stopPropagation();const el=document.getElementById(b.dataset.dict);
-  if(el){el.focus();try{const n=el.value.length;el.setSelectionRange(n,n)}catch(err){}}toast(DICT.tip,5000)},true);
+// dictation: on-device Whisper (dictate-worker.js, engine in vendor/, model in models/). The microphone is on only between Dictate and Stop;
+// audio is transcribed in this browser and never sent anywhere. Where that can't run (offline file, old browser, no mic) it falls back to the device's own voice typing.
+const VT={ok:!!(window.Worker&&window.MediaRecorder&&window.WebAssembly&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&/^https?:$/.test(location.protocol)),
+  w:null,ready:false,busy:false,rec:null,stream:null,chunks:[],id:null,pos:null,n:0,cb:{},tick:null};
+function vtFallback(id,msg){const el=document.getElementById(id);if(el){el.focus();try{const n=el.value.length;el.setSelectionRange(n,n)}catch(err){}}toast(msg?msg+' '+DICT.tip:DICT.tip,6000)}
+function vtWorker(){if(VT.w)return VT.w;
+  VT.w=new Worker('dictate-worker.js',{type:'module'});
+  VT.w.onmessage=e=>{const m=e.data||{};
+    if(m.type==='progress'){if(!VT.ready&&VT.busy&&m.total)toast('Downloading the speech model (first time only)… '+Math.min(99,Math.round(100*m.loaded/m.total))+'%',60000)}
+    else if(m.type==='ready')VT.ready=true;
+    else if(m.id&&VT.cb[m.id]){const f=VT.cb[m.id];delete VT.cb[m.id];f(m)}};
+  VT.w.onerror=e=>{try{e.preventDefault()}catch(err){}VT.ok=false;const cbs=Object.values(VT.cb);VT.cb={};cbs.forEach(f=>f({type:'error',message:'the speech engine could not start'}))};
+  VT.w.postMessage({type:'load'});return VT.w}
+function vtPaint(){document.querySelectorAll('[data-dict]').forEach(b=>{const on=b.dataset.dict===VT.id,r=on&&!!VT.rec,w=on&&VT.busy;
+  b.classList.toggle('rec',r);b.classList.toggle('busy',w);const t=r?'■ Stop':w?'Writing…':'🎤 Dictate';if(b.textContent!==t)b.textContent=t;b.setAttribute('aria-pressed',r?'true':'false')})}
+async function vtStart(id){const el=document.getElementById(id);if(!el)return;
+  const v=el.value||'';VT.pos=el._sel&&el._sel[1]<=v.length?el._sel.slice():[v.length,v.length];
+  let st;try{st=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}})}
+  catch(err){return vtFallback(id,err&&err.name==='NotAllowedError'?'Microphone blocked for this site.':'No microphone found.')}
+  vtWorker();VT.stream=st;VT.id=id;VT.chunks=[];
+  try{VT.rec=new MediaRecorder(st)}catch(err){st.getTracks().forEach(t=>t.stop());VT.stream=null;VT.id=null;return vtFallback(id,'Recording is not supported in this browser.')}
+  VT.rec.ondataavailable=e=>{if(e.data&&e.data.size)VT.chunks.push(e.data)};VT.rec.onstop=vtProcess;VT.rec.start();
+  clearInterval(VT.tick);VT.tick=setInterval(vtPaint,400);vtPaint();
+  toast(VT.ready?'Listening… tap Stop when you finish.':'Listening… tap Stop when you finish. The speech model loads the first time.',3500)}
+function vtStop(){if(!VT.rec)return;const r=VT.rec;VT.rec=null;VT.busy=true;try{r.stop()}catch(err){}if(VT.stream){VT.stream.getTracks().forEach(t=>t.stop());VT.stream=null}vtPaint()}
+async function vtProcess(){const id=VT.id,blob=new Blob(VT.chunks,{type:(VT.chunks[0]&&VT.chunks[0].type)||''});VT.chunks=[];
+  const done=msg=>{VT.busy=false;VT.id=null;clearInterval(VT.tick);vtPaint();if(msg)toast(msg,6000)};
+  try{const AC=window.AudioContext||window.webkitAudioContext,ac=new AC({sampleRate:16000});const buf=await ac.decodeAudioData(await blob.arrayBuffer());try{ac.close()}catch(err){}
+    const a=buf.getChannelData(0).slice(0);if(a.length<4800)return done('Too short. Tap Dictate, speak, then tap Stop.');
+    const n=++VT.n;VT.cb[n]=m=>{if(m.type==='error'){done();return vtFallback(id,'Dictation failed ('+m.message+').')}
+      const t=vtClean(m.text);if(!t)return done('No speech heard. Try again a little closer to the microphone.');vtInsert(id,t);done();toast('Dictation added. Check it before copying.',2200)};
+    vtWorker().postMessage({type:'run',id:n,audio:a},[a.buffer]);if(!VT.ready)toast('Loading the speech model (first time only)…',60000)}
+  catch(err){done();vtFallback(id,'Could not read the recording.')}}
+const VT_NUM={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8};
+const VT_RULES=[
+  [/\[(?:BLANK_AUDIO|MUSIC|NOISE|INAUDIBLE|SILENCE)\]|\((?:[^)]*\b(?:music|silence|noise|inaudible|blank)\b[^)]*)\)/gi,''],
+  [/[,.]?\s*\bnew paragraph\b[,.]?\s*/gi,'\n\n'],[/[,.]?\s*\bnew line\b[,.]?\s*/gi,'\n'],
+  [/\s*\bfull stop\b[,.]?/gi,'.'],[/\s*\bquestion mark\b[,.]?/gi,'?'],[/\s*\bsemi-?colon\b[,.]?/gi,';'],[/\s*\bcomma\b[,.]?/gi,','],
+  [/\s*\bopen bracket\b[,.]?\s*/gi,' ('],[/\s*\bclose bracket\b[,.]?/gi,')'],
+  [/\b(upper|lower)[\s-]+(right|left)[\s-]+([1-8]|one|two|three|four|five|six|seven|eight)\b/gi,(m,a,b,c)=>a[0].toUpperCase()+b[0].toUpperCase()+(VT_NUM[c.toLowerCase()]||c)],
+  [/\b([ULul])\.?\s?([RLrl])\.?\s?([1-8])\b/g,(m,a,b,c)=>a.toUpperCase()+b.toUpperCase()+c],
+  [/\b(?:[A-Z]\.\s?){2,6}(?=(\s+[A-Z]|\s*$)?)/g,(m,end)=>m.replace(/[.\s]/g,'')+(end!==undefined?'. ':' ')],
+  [/[ \t]+([.,;:?)])/g,'$1'],[/[ \t]{2,}/g,' '],[/ +\n/g,'\n'],[/\n +/g,'\n']
+];
+function vtClean(t){t=String(t||'');if(/^\s*(?:you|thank you|thanks for watching|bye|\.+)[.!]?\s*$/i.test(t))return '';VT_RULES.forEach(([re,r])=>{t=t.replace(re,r)});
+  return t.replace(/([.?!]\s+|\n)([a-z])/g,(m,a,b)=>a+b.toUpperCase()).trim()}
+function vtInsert(id,t){const el=document.getElementById(id);if(!el)return;const v=el.value||'';const p=VT.pos&&VT.pos[1]<=v.length?VT.pos:[v.length,v.length];
+  const pre=v.slice(0,p[0]),post=v.slice(p[1]);
+  if(pre&&!/[.?!:\n]\s*$/.test(pre)&&/^[A-Z][a-z]/.test(t)&&!/^I\b/.test(t))t=t[0].toLowerCase()+t.slice(1);
+  const sep=pre&&!/\s$/.test(pre)?' ':'',tail=post&&!/^\s/.test(post)?' ':'';
+  el.value=pre+sep+t+tail+post;const c=(pre+sep+t).length;try{el.focus();el.setSelectionRange(c,c)}catch(err){}el._sel=[c,c];
+  el.dispatchEvent(new Event('input',{bubbles:true}))}
+document.addEventListener('focusout',e=>{const el=e.target;if(el&&(el.tagName==='TEXTAREA'||el.tagName==='INPUT')){try{el._sel=[el.selectionStart,el.selectionEnd]}catch(err){}}},true);
+document.addEventListener('click',e=>{const b=e.target.closest('[data-dict]');if(!b)return;e.preventDefault();e.stopPropagation();const id=b.dataset.dict;
+  if(!VT.ok)return vtFallback(id);
+  if(VT.rec){const same=VT.id===id;vtStop();if(same)return;toast('Finish one dictation before starting another.',2500);return}
+  if(VT.busy)return toast('Still writing the last dictation…',2000);
+  vtStart(id)},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VT.rec)vtStop()});
 
 
 // ---------- presets: save the current selections on a template and reload them later ----------
