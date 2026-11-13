@@ -31,6 +31,9 @@ run({name:'Notile',fn:async()=>{
       w.onmessage=e=>{if(e.data.type==='result'||e.data.type==='error'){clearTimeout(t);res(e.data)}};
       w.postMessage({type:'run',id:1,audio:new Float32Array(16000)})}));
     expect(r.type==='result','speech engine: '+(r.message||r.type));
+    const f=await pg.evaluate(()=>new Promise(res=>{const w=new Worker('dictate-worker.js',{type:'module'});const t=setTimeout(()=>res({type:'timeout'}),240000);
+      w.onmessage=e=>{if(e.data.type==='result'||e.data.type==='error'){clearTimeout(t);res(e.data)}};w.postMessage({type:'run',id:1,model:'fast',audio:new Float32Array(16000)})}));
+    expect(f.type==='result'&&typeof f.ms==='number','Fast mode engine: '+(f.message||f.type));
     const c=await pg.evaluate(()=>vtClean('Placed G.I.C. on the upper left six full stop new line O.H.I. given'));expect(c==='Placed GIC on the UL6.\nOHI given','clean-up: '+JSON.stringify(c));await noErrors(pg)});
   await test('built-in dental chart opens and returns a summary',async()=>{const pg=await page('/notile/');await pg.click('#chopen');await pg.waitForTimeout(1500);
     const fr=pg.frames().find(f=>f!==pg.mainFrame()&&f.url().includes('srcdoc'))||pg.frames()[1];expect(fr,'chart frame missing');

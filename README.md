@@ -22,7 +22,9 @@ On notile.co.uk, the BSP periodontal diagnosis, IOTN and RD-IOTN tools in Guide 
 
 Every free-text box, and the note itself, has a **🎤 Dictate** button. Tap it, speak, then tap **Stop** (or press Esc). Speech is turned into text in the browser by OpenAI's Whisper model (base.en), which is served from this site, so audio never leaves the device. The microphone is on only between Dictate and Stop.
 
-- The first use downloads about 100 MB from this site (engine in `vendor/`, model in `models/`). The browser keeps a copy after that.
+- The first use downloads about 100 MB from this site (engine in `vendor/`, model in `models/`), once; the browser keeps it.
+- Fast mode (chosen in the Dictate app, shared with these buttons) uses Whisper tiny.en (about 40 MB): roughly twice as fast, a little less accurate.
+- If it is slow in Microsoft Edge, turn off enhanced security for the site (padlock → "Use enhanced security for this site"): Edge runs WebAssembly in a slow interpreter on sites it doesn't know.
 - Say "full stop", "comma", "question mark", "new line" or "new paragraph" for layout. "Upper left six" becomes UL6, and spelt-out letters like G.I.C. become GIC.
 - Where on-device dictation can't run (the offline single file, an older browser, no microphone), the button falls back to the device's own voice typing tip.
 

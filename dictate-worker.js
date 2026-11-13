@@ -1,11 +1,11 @@
 // Notile on-device dictation worker (used by Notile's Dictate buttons and the Dictate app).
-// Runs OpenAI Whisper (base.en, 8-bit) with transformers.js entirely in the browser.
+// Runs OpenAI Whisper (base.en, or tiny.en for Fast mode; 8-bit) with transformers.js entirely in the browser.
 // The engine and model are served from this site (vendor/ and models/); nothing is
 // fetched from anywhere else and audio never leaves the device.
 import { pipeline, env } from './vendor/transformers/transformers.min.js';
 
 const base = new URL('./', self.location.href).href;
-const MODEL = 'onnx-community/whisper-base.en';
+const MODELS = { base: 'onnx-community/whisper-base.en', fast: 'onnx-community/whisper-tiny.en' };
 const MODEL_CACHE = 'notile-dictate-v1'; // bump when the model or engine files change
 
 env.allowRemoteModels = false;
@@ -59,29 +59,32 @@ env.fetch = cachedFetch;
 // drop caches left by older versions of this worker, and transformers.js's own duplicate copy
 caches.keys().then(ks => ks.filter(k => (k.startsWith('notile-dictate-') && k !== MODEL_CACHE) || k === 'transformers-cache').forEach(k => caches.delete(k))).catch(() => {});
 
-let asrP = null;
-async function load() {
-  if (!asrP) {
-    asrP = (async () => {
+const pipes = {};
+async function load(key) {
+  const k = MODELS[key] ? key : 'base';
+  if (!pipes[k]) {
+    pipes[k] = (async () => {
       // hand the WebAssembly engine to ONNX Runtime from the same cache, so it isn't re-downloaded either
-      try {
-        const w = await cachedFetch(base + 'vendor/transformers/ort-wasm-simd-threaded.asyncify.wasm');
-        if (w.ok) env.backends.onnx.wasm.wasmBinary = await w.arrayBuffer();
-      } catch (e) { /* falls back to ONNX Runtime's own fetch */ }
-      return pipeline('automatic-speech-recognition', MODEL, { device: 'wasm', dtype: 'q8' });
-    })().catch((e) => { asrP = null; throw e; });
+      if (!env.backends.onnx.wasm.wasmBinary) {
+        try {
+          const w = await cachedFetch(base + 'vendor/transformers/ort-wasm-simd-threaded.asyncify.wasm');
+          if (w.ok) env.backends.onnx.wasm.wasmBinary = await w.arrayBuffer();
+        } catch (e) { /* falls back to ONNX Runtime's own fetch */ }
+      }
+      return pipeline('automatic-speech-recognition', MODELS[k], { device: 'wasm', dtype: 'q8' });
+    })().catch((e) => { delete pipes[k]; throw e; });
   }
-  return asrP;
+  return pipes[k];
 }
 
 self.onmessage = async (e) => {
   const m = e.data || {};
   try {
     if (m.type === 'load') {
-      await load();
-      postMessage({ type: 'ready' });
+      await load(m.model);
+      postMessage({ type: 'ready', model: m.model });
     } else if (m.type === 'run') {
-      const asr = await load();
+      const asr = await load(m.model);
       const secs = m.audio.length / 16000;
       const t0 = performance.now();
       const out = await asr(m.audio, {

@@ -2475,14 +2475,15 @@ let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;cl
 const VT={ok:!!(window.Worker&&window.MediaRecorder&&window.WebAssembly&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&/^https?:$/.test(location.protocol)),
   w:null,ready:false,busy:false,rec:null,stream:null,chunks:[],id:null,pos:null,n:0,cb:{},tick:null};
 function vtFallback(id,msg){const el=document.getElementById(id);if(el){el.focus();try{const n=el.value.length;el.setSelectionRange(n,n)}catch(err){}}toast(msg?msg+' '+DICT.tip:DICT.tip,6000)}
+function vtModel(){try{return JSON.parse(localStorage.getItem('dictate.model'))==='fast'?'fast':'base'}catch(e){return 'base'}}
 function vtWorker(){if(VT.w)return VT.w;
   VT.w=new Worker('dictate-worker.js',{type:'module'});
   VT.w.onmessage=e=>{const m=e.data||{};
     if(m.type==='progress'){if(!VT.ready&&VT.busy&&m.total)toast('Downloading the speech model (first time only)… '+Math.min(99,Math.round(100*m.loaded/m.total))+'% of '+Math.round(m.total/1048576)+' MB. Your dictation will appear when it finishes.',60000)}
-    else if(m.type==='ready')VT.ready=true;
+    else if(m.type==='ready'){if(!m.model||m.model===vtModel())VT.ready=true}
     else if(m.id&&VT.cb[m.id]){const f=VT.cb[m.id];delete VT.cb[m.id];f(m)}};
   VT.w.onerror=e=>{try{e.preventDefault()}catch(err){}VT.ok=false;const cbs=Object.values(VT.cb);VT.cb={};cbs.forEach(f=>f({type:'error',message:'the speech engine could not start'}))};
-  VT.w.postMessage({type:'load'});return VT.w}
+  VT.w.postMessage({type:'load',model:vtModel()});return VT.w}
 function vtPaint(){document.querySelectorAll('[data-dict]').forEach(b=>{const on=b.dataset.dict===VT.id,r=on&&!!VT.rec,w=on&&VT.busy;
   b.classList.toggle('rec',r);b.classList.toggle('busy',w);const t=r?'■ Stop':w?'Writing…':'🎤 Dictate';if(b.textContent!==t)b.textContent=t;b.setAttribute('aria-pressed',r?'true':'false')})}
 async function vtStart(id){const el=document.getElementById(id);if(!el)return;
@@ -2503,8 +2504,10 @@ async function vtProcess(){const id=VT.id,blob=new Blob(VT.chunks,{type:(VT.chun
     const dog=setTimeout(()=>{if(!VT.cb[n])return;delete VT.cb[n];try{VT.w.terminate()}catch(err){}VT.w=null;VT.ready=false;
       done('That took too long, so it was stopped. Try a shorter phrase. If it keeps happening, this computer may be too slow for on-device dictation.')},limit);
     VT.cb[n]=m=>{clearTimeout(dog);if(m.type==='error'){done();return vtFallback(id,'Dictation failed ('+m.message+').')}
-      const t=vtClean(m.text);if(!t)return done('No speech heard. Try again a little closer to the microphone.');vtInsert(id,t);done();toast('Dictation added. Check it before copying.',2200)};
-    vtWorker().postMessage({type:'run',id:n,audio:a},[a.buffer]);if(!VT.ready)toast('Loading the speech model (first time only)…',60000)}
+      const t=vtClean(m.text);if(!t)return done('No speech heard. Try again a little closer to the microphone.');vtInsert(id,t);done();
+      if(m.ms&&m.ms>Math.max(8000,secs*2500))toast('Dictation added, but slowly ('+(m.ms/1000).toFixed(0)+' s). '+(/\bEdg\//.test(navigator.userAgent)?'In Edge, click the padlock and turn off enhanced security for this site, then reload. ':'')+(vtModel()==='base'?'Fast mode in the Dictate app is about twice as fast.':''),9000);
+      else toast('Dictation added. Check it before copying.',2200)};
+    vtWorker().postMessage({type:'run',id:n,audio:a,model:vtModel()},[a.buffer]);if(!VT.ready)toast('Loading the speech model (first time only)…',60000)}
   catch(err){done();vtFallback(id,'Could not read the recording.')}}
 const VT_NUM={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8};
 const VT_RULES=[
