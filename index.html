@@ -2478,7 +2478,7 @@ function vtFallback(id,msg){const el=document.getElementById(id);if(el){el.focus
 function vtWorker(){if(VT.w)return VT.w;
   VT.w=new Worker('dictate-worker.js',{type:'module'});
   VT.w.onmessage=e=>{const m=e.data||{};
-    if(m.type==='progress'){if(!VT.ready&&VT.busy&&m.total)toast('Downloading the speech model (first time only)… '+Math.min(99,Math.round(100*m.loaded/m.total))+'%',60000)}
+    if(m.type==='progress'){if(!VT.ready&&VT.busy&&m.total)toast('Downloading the speech model (first time only)… '+Math.min(99,Math.round(100*m.loaded/m.total))+'% of '+Math.round(m.total/1048576)+' MB. Your dictation will appear when it finishes.',60000)}
     else if(m.type==='ready')VT.ready=true;
     else if(m.id&&VT.cb[m.id]){const f=VT.cb[m.id];delete VT.cb[m.id];f(m)}};
   VT.w.onerror=e=>{try{e.preventDefault()}catch(err){}VT.ok=false;const cbs=Object.values(VT.cb);VT.cb={};cbs.forEach(f=>f({type:'error',message:'the speech engine could not start'}))};
@@ -2499,7 +2499,10 @@ async function vtProcess(){const id=VT.id,blob=new Blob(VT.chunks,{type:(VT.chun
   const done=msg=>{VT.busy=false;VT.id=null;clearInterval(VT.tick);vtPaint();if(msg)toast(msg,6000)};
   try{const AC=window.AudioContext||window.webkitAudioContext,ac=new AC({sampleRate:16000});const buf=await ac.decodeAudioData(await blob.arrayBuffer());try{ac.close()}catch(err){}
     const a=buf.getChannelData(0).slice(0);if(a.length<4800)return done('Too short. Tap Dictate, speak, then tap Stop.');
-    const n=++VT.n;VT.cb[n]=m=>{if(m.type==='error'){done();return vtFallback(id,'Dictation failed ('+m.message+').')}
+    const n=++VT.n,secs=a.length/16000,limit=VT.ready?20000+secs*3000:600000;
+    const dog=setTimeout(()=>{if(!VT.cb[n])return;delete VT.cb[n];try{VT.w.terminate()}catch(err){}VT.w=null;VT.ready=false;
+      done('That took too long, so it was stopped. Try a shorter phrase. If it keeps happening, this computer may be too slow for on-device dictation.')},limit);
+    VT.cb[n]=m=>{clearTimeout(dog);if(m.type==='error'){done();return vtFallback(id,'Dictation failed ('+m.message+').')}
       const t=vtClean(m.text);if(!t)return done('No speech heard. Try again a little closer to the microphone.');vtInsert(id,t);done();toast('Dictation added. Check it before copying.',2200)};
     vtWorker().postMessage({type:'run',id:n,audio:a},[a.buffer]);if(!VT.ready)toast('Loading the speech model (first time only)…',60000)}
   catch(err){done();vtFallback(id,'Could not read the recording.')}}
